@@ -33,7 +33,7 @@ subroutine output (noutput)
   implicit none
 
   integer, intent(in) :: noutput
-
+  logical :: dir_exists
   integer :: mark, startmark, p
 
   write(logu,*) ""
@@ -57,6 +57,15 @@ subroutine output (noutput)
     write(logu,'(1x,a)') "Skipping data output."
     write(logu,*) ""
     return
+  else
+    ! create log directory in case it's missing
+    inquire(directory=trim(datadir),exist=dir_exists)
+    if (.not.dir_exists .and. rank ==master ) then
+      write(*,'(a)') "Could not find datadir, creating it anew"
+      call system('mkdir -p ' // trim(datadir) )
+    end if
+    call mpi_barrier(mpi_comm_world, ierr)
+
   end if
 
   call tic(startmark)
@@ -256,7 +265,7 @@ subroutine write3DVTKBlocks (noutput)
   else
     slash = ''
   end if
-  
+
   ! Write .visit metadata file - master only
   if (rank.eq.master) then
     write(noutstr,'(i4.4)') noutput
@@ -288,7 +297,7 @@ subroutine write3DVTKBlocks (noutput)
       end do
       close(unit=7)
     end if
-  end if     
+  end if
 
   ! Generate data filename based on templates
   write(rankstr,'(i3.3)') rank
@@ -298,7 +307,7 @@ subroutine write3DVTKBlocks (noutput)
   call replace (blocksfile, 'YYYY', noutstr)
   write(blocksfile,'(a)') trim(datadir) // trim(slash) // trim(blocksfile) // ".vtk"
 
-  ! Write data file - all processes 
+  ! Write data file - all processes
   unitout = 10 + rank
   open (unit=unitout, file=blocksfile, status='unknown', access='stream', &
         convert="BIG_ENDIAN", iostat=istat)
@@ -311,7 +320,7 @@ subroutine write3DVTKBlocks (noutput)
 
   write(logu,*) ""
   write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing BLOCKS data file ", trim(blocksfile), " ..."
-     
+
   ! VTK Header
   write(unitout) "# vtk DataFile Version 4.2", lf
   write(unitout) "Output from Walicxe3D", lf
@@ -368,7 +377,7 @@ subroutine write3DVTKBlocks (noutput)
               end do
             end do
           end do
-        end do 
+        end do
       end do
       nblocks = nblocks + 1
     end if
@@ -408,7 +417,7 @@ subroutine write3DVTKBlocks (noutput)
 !            end if
             ! DEBUG
           end do
-        end do 
+        end do
       end do
     end if
   end do
@@ -444,13 +453,13 @@ subroutine write3DVTKBlocks (noutput)
         end do
       end do
     end if
-  end do    
+  end do
   write(unitout) lf
   if (counter.ne.ncells) then
     write(logu,'(a,i8,a,i8)') "CELL TYPES expected:", ncells*9, ", ACTUAL:", counter
     write(logu,'(a)') "***ABORTING!***"
   end if
-  
+
   ! VTK cell data dump begins here
   write(cbuffer,'(A,I12)') "CELL_DATA", ncells
   write(unitout) trim(cbuffer), lf
@@ -527,7 +536,7 @@ subroutine write3DVTKBlocks (noutput)
       end do
     end if
   end do
-  write(unitout) lf    
+  write(unitout) lf
 
   ! Pressure
   ! DEBUG
@@ -565,7 +574,7 @@ subroutine write3DVTKBlocks (noutput)
       end do
     end if
   end do
-  write(unitout) lf 
+  write(unitout) lf
 
 #ifdef PASBP
   ! Velocity
@@ -605,7 +614,7 @@ subroutine write3DVTKBlocks (noutput)
       end do
     end if
   end do
-  write(unitout) lf    
+  write(unitout) lf
 #endif
 
 !    ! Temperature
@@ -627,7 +636,7 @@ subroutine write3DVTKBlocks (noutput)
 !        end do
 !      end do
 !    end do
-!    write(unitout) lf   
+!    write(unitout) lf
 
   ! Metallicity
   if (cooling_type.eq.COOL_TABLE_METAL) then
@@ -707,7 +716,7 @@ subroutine write3DVTKGrid (noutput)
   character(4) :: noutstr
   character(1) :: slash
   integer :: l
- 
+
   character(50) :: cbuffer
   character(1) :: lf = char(10)
   real :: xb, yb, zb
@@ -728,7 +737,7 @@ subroutine write3DVTKGrid (noutput)
   else
     slash = ''
   end if
-  
+
   ! Generate data filename based on templates
   write(noutstr,'(I4.4)') noutput
   gridfile = gridtpl
@@ -745,10 +754,10 @@ subroutine write3DVTKGrid (noutput)
     close(unitout)
     call clean_abort (ERROR_OUTPUT_FILE_OPEN)
   end if
-  
+
   write(logu,*) ""
   write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing GRID meta file ", trim(gridfile), " ..."
-     
+
   ! VTK Header
   write(unitout) "# vtk DataFile Version 4.2", lf
   write(unitout) "Output from Walicxe3D", lf
@@ -1003,5 +1012,3 @@ end subroutine write2DMapVTK
 
 
 !===============================================================================
-
-
