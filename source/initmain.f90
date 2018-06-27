@@ -76,11 +76,19 @@ subroutine initmain ()
     write(rankstr,'(i3.3)') rank
     logfile = trim(logdir) // trim(slash) // "rank" // rankstr // ".log"
 
+    ! create log directory in case it's missing
+    inquire(directory=trim(logdir),exist=existing)
+    if (.not.existing .and. rank ==master ) then
+      write(*,'(a)') "Could not find logdir, creating it anew"
+      call system('mkdir -p ' // trim(logdir) )
+    end if
+    call mpi_barrier(mpi_comm_world, ierr)
+
     ! Check if file already exists
     success = .false.
     inext = 1
     do while(.not.success)
-      inquire (file=logfile, exist=existing) 
+      inquire (file=logfile, exist=existing)
       if (existing) then
         ! file exists - append a number, try again
         write(logfile,'(a,a,a,a,i0,a)') trim(logdir) // trim(slash), &
@@ -92,7 +100,7 @@ subroutine initmain ()
         open (unit=logu, file=logfile, status='unknown', position="append", &
           iostat=istat)
         success = .true.
-      end if   
+      end if
     end do
 
     if (istat.ne.0) then
@@ -111,7 +119,7 @@ subroutine initmain ()
     logu = 6
 
   end if
- 
+
   ! =================================
   call tic(mark)
   write(logu,*) ""
@@ -132,14 +140,14 @@ subroutine initmain ()
 
   if(logged.or.rank.eq.master) then
     write(logu,*)
-    write(logu,'(1x,a)') "***************************************************"  
-    write(logu,'(1x,a)') "*   __    __      _ _               _____ ____    *"  
-    write(logu,'(1x,a)') "*  / / /\ \ \__ _| (_) _____  _____|___ /|  _ \   *"  
-    write(logu,'(1x,a)') "*  \ \/  \/ / _` | | |/ __\ \/ / _ \ |_ \| | | |  *"  
-    write(logu,'(1x,a)') "*   \  /\  / (_| | | | (__ |  |  __/___) | |_| |  *"  
-    write(logu,'(1x,a)') "*    \/  \/ \__,_|_|_|\___/_/\_\___|____/|____/   *"  
-    write(logu,'(1x,a)') "*                                                 *"  
-    write(logu,'(1x,a)') "*         Version 1.2 ($Revision:: 76  $)         *"  
+    write(logu,'(1x,a)') "***************************************************"
+    write(logu,'(1x,a)') "*   __    __      _ _               _____ ____    *"
+    write(logu,'(1x,a)') "*  / / /\ \ \__ _| (_) _____  _____|___ /|  _ \   *"
+    write(logu,'(1x,a)') "*  \ \/  \/ / _` | | |/ __\ \/ / _ \ |_ \| | | |  *"
+    write(logu,'(1x,a)') "*   \  /\  / (_| | | | (__ |  |  __/___) | |_| |  *"
+    write(logu,'(1x,a)') "*    \/  \/ \__,_|_|_|\___/_/\_\___|____/|____/   *"
+    write(logu,'(1x,a)') "*                                                 *"
+    write(logu,'(1x,a)') "*         Version 1.2 ($Revision:: 76  $)         *"
     write(logu,'(1x,a)') "*                                                 *"
 #ifdef MPIP
     write(logu,'(1x,a,i3,a)') "*        Running with MPI on ", nProcs , " processors       *"
@@ -241,7 +249,7 @@ subroutine initmain ()
       write(logu,*) "This solver requires TWO ghost cells!"
       write(logu,*) "Modify parameters.f90"
       write(logu,*) "***ABORTING***"
-    end if    
+    end if
     write(logu,'(1x,a,a)') "Limiter: ", trim(limitername(limiter_type))
   end if
   write(logu,'(1x,a,i0)') "Hydro equations:  ", neqhydro
@@ -270,7 +278,7 @@ subroutine initmain ()
   ! Radiative cooling
   write(logu,*) ""
   if (cooling_type.eq.COOL_NONE) then
-    write(logu,'(1x,a)') "> Radiative cooling is OFF"  
+    write(logu,'(1x,a)') "> Radiative cooling is OFF"
   else
     write(logu,'(1x,a)') "> Radiative cooling is ON"
     write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
@@ -306,7 +314,7 @@ subroutine initmain ()
 !    write(logu,'(a,f6.1,a)') "Required: ", totMem, " MB"
 !    write(logu,'(a,f6.1,a)') "Allowed:  ", maxMemProc, " MB"
 !    write(logu,'(a,f6.1,a)') "Either decrease nbMaxProc or increase maxMemProc in parameters.f90"
-!    write(logu,*) "***ABORTING***"    
+!    write(logu,*) "***ABORTING***"
 !    call clean_abort (ERROR_INSUFFICIENT_RAM)
 !  else
 !    write(logu,'(1x,a,f6.1,a)') "Estimated required memory for big arrays: ", totMem, " MB"
@@ -318,7 +326,7 @@ subroutine initmain ()
   U(:,:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for U array!"
-    write(logu,*) "***ABORTING***"    
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -326,7 +334,7 @@ subroutine initmain ()
   UP(:,:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for UP array!"
-    write(logu,*) "***ABORTING***"    
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -334,57 +342,57 @@ subroutine initmain ()
   PRIM(:,:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for P array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
   ! Allocate memory and initialize auxiliary data arrays
-  
+
   allocate( F(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
   F(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for F array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
-  
+
   allocate( G(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
   G(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for G array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
-  
+
   allocate( H(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
   H(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for H array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
-  
+
   allocate( FC(neqtot, nxmin:nxmax, nxmin:nxmax, nxmin:nxmax), stat=istat)
   FC(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for FC array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
-  
+
   allocate( GC(neqtot, nxmin:nxmax, nxmin:nxmax, nxmin:nxmax), stat=istat)
   GC(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for GC array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
-  
+
   allocate( HC(neqtot, nxmin:nxmax, nxmin:nxmax, nxmin:nxmax), stat=istat)
   HC(:,:,:,:) = 0.0
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for HC array!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -394,7 +402,7 @@ subroutine initmain ()
   globalBlocks(:) = -1
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for global block registry!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -402,7 +410,7 @@ subroutine initmain ()
   localBlocks(:) = -1
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for local block registry!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -412,7 +420,7 @@ subroutine initmain ()
   refineFlags(:) = -1
   if (istat.ne.0) then
     write(logu,'(a)') "Couldn't allocate memory for refinement flags!"
-    write(logu,*) "***ABORTING***"     
+    write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
 
@@ -422,7 +430,7 @@ subroutine initmain ()
 
   ! Report allocation results
   write(logu,'(1x,a)') "Successfully allocated big arrays."
-  write(logu,'(1x,a,f6.1,a)') "U:      ", sizeof(U)/(1024.*1024.), " MB" 
+  write(logu,'(1x,a,f6.1,a)') "U:      ", sizeof(U)/(1024.*1024.), " MB"
   write(logu,'(1x,a,f6.1,a)') "UP:     ", sizeof(UP)/(1024.*1024.), " MB"
   write(logu,'(1x,a,f6.1,a)') "PRIM:   ", sizeof(PRIM)/(1024.*1024.), " MB"
   write(logu,'(1x,a,f6.1,a)') "Fluxes: ", (sizeof(F)+sizeof(G)+sizeof(H)+&
@@ -433,7 +441,7 @@ subroutine initmain ()
     RAM_per_proc, "MB"
 
   ! =================================
-  
+
   ! Initialize simulation state - (warm start does this later)
   time = 0.0
   it = 0
@@ -443,7 +451,7 @@ subroutine initmain ()
 
   write(logu,'(1x,a,a)') ""
   write(logu,'(1x,a,a)') "> Performed initializations and allocated big arrays in ", nicetoc(mark)
-  write(logu,*) ""  
+  write(logu,*) ""
 
   ! Barrier
   call mpi_barrier (mpi_comm_world, ierr)
