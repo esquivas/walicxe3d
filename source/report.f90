@@ -49,10 +49,6 @@ subroutine main_report ()
     trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
   write(logu,*) "============================================"
   write(logu,*) ""
+  call flush(logu)
 
 end subroutine main_report
-
-
-
-
-
