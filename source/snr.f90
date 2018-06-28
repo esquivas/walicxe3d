@@ -35,7 +35,7 @@
 !!    the SNR you want to detonate. The descriptions of the object's fields
 !!    are given below. All fields are mandatory.
 !! 3) Whenever the SNR is to be detonated, call the detonateSNR() subroutine,
-!!    passing as arguments the snrparams object and the flow variables array. 
+!!    passing as arguments the snrparams object and the flow variables array.
 module snr
 
   implicit none
@@ -65,6 +65,7 @@ module snr
     real :: mass
     real :: energy
     real :: chi
+    real :: rho_env
     real :: bx = 0.0
     real :: by = 0.0
     real :: bz = 0.0
@@ -72,7 +73,7 @@ module snr
     real :: metal = 1.0
     logical :: armed = .true.
   end type snr_params_type
- 
+
   ! ============================================================================
 
 contains
@@ -97,7 +98,7 @@ contains
     integer :: nb, bID, i, j, k
     real :: xc, yc, zc, RSN, MSN, ESN, chi, bx, by, bz
     real :: x, y, z, dist
-    real(kind=8) :: Ek, Et, Pres, Dens, Vmax, metal
+    real(kind=8) :: Ek, Et, Pres, Dens, Vmax, metal,rho_env
     real(kind=8) :: Vel, Vx, Vy, Vz
     real :: primit(neqtot), flowvars(neqtot)
     real :: zone(6)
@@ -107,16 +108,17 @@ contains
     write(logu,'(1x,a)') "> Imposing supernova remnant ..."
 
     ! Unpack SNR parameters
-    xc = snr_params%xc
-    yc = snr_params%yc
-    zc = snr_params%zc
-    RSN = snr_params%radius
-    MSN = snr_params%mass
-    ESN = snr_params%energy
-    chi = snr_params%chi
-    bx = snr_params%bx
-    by = snr_params%by
-    bz = snr_params%bz
+    xc   = snr_params%xc
+    yc   = snr_params%yc
+    zc   = snr_params%zc
+    RSN   = snr_params%radius
+    MSN   = snr_params%mass
+    ESN   = snr_params%energy
+    chi   = snr_params%chi
+    rho_env  = snr_params%rho_env
+    bx    = snr_params%bx
+    by    = snr_params%by
+    bz    = snr_params%bz
     metal = snr_params%metal
 
     ! Calculate derived parameters in cgs
@@ -213,13 +215,13 @@ contains
 
   ! ============================================
   !> @brief Simulates the remnant of a supernova explosion (SN Ia ejecta model)
-  !> @details Simulates the detonation of a supernova by imposing flow 
+  !> @details Simulates the detonation of a supernova by imposing flow
   !! properties following the SN Ia ejecta model of Jun & Norman (1996).
   !! The method is similar to the 'simple' version, except for the following:
   !! Density is taken as:
   !!   rho_c                 if   r < r_c
   !!   rho_c*(r/r_c)^(-n)    if   r > r_c
-  !! where rho_c and r_c are the ensity and radius of the core, 
+  !! where rho_c and r_c are the ensity and radius of the core,
   !! and n (=7) is the core density power law index.
   !! The core radius is given by:
   !!   r_c = R*[1-x*(3-n)*M/(4*pi*rho_0*R^3)]^[1/(3-n)]
@@ -231,7 +233,7 @@ contains
   !! The velocity is taken as linearly proportional to radius:
   !!   v(r) = v0*r/R
   !! where v0 is the velocity at the outer boundary and is given by:
-  !!   v0 = Ek^(1/2)*{2*pi*rho_c*r_c^5/(5*R^2) + 
+  !!   v0 = Ek^(1/2)*{2*pi*rho_c*r_c^5/(5*R^2) +
   !!       + 2*pi*rho_0*R^3*[1-(R/r_c)^(n-5)]/(5-n)}
   !! Finally, pressure can be obtained from the thermal energy and volume:
   !!   P = (1/CV)*Eth/(4/3*PI*R^3)
@@ -251,7 +253,7 @@ contains
     integer :: nb, bID, i, j, k
     real :: xc, yc, zc, RSN, MSN, ESN, chi, bx, by, bz, metal
     real :: x, y, z, dist
-    real(kind=8) :: n, xm, rc, rhoc, rho0
+    real(kind=8) :: n, xm, rc, rhoc, rho0, rho_env
     real(kind=8) :: Ek, Eth, pres, dens, vmax
     real(kind=8) :: vel, vx, vy, vz
     real :: primit(neqtot), flowvars(neqtot)
@@ -268,6 +270,7 @@ contains
     RSN = snr_params%radius
     MSN = snr_params%mass
     ESN = snr_params%energy
+    rho_env = snr_params%rho_env
     chi = snr_params%chi
     bx = snr_params%bx
     by = snr_params%by
@@ -281,7 +284,7 @@ contains
     ! Calculate derived parameters in cgs
     Ek = chi*ESN
     Eth = (1.0-chi)*ESN
-    rc = RSN*(1.0-xm*(3-n)*MSN/(4*PI*4*ism_dens*RSN**3))**(1.0/(3.0-n))
+    rc = RSN*(1.0-xm*(3-n)*MSN/(4*PI*4*rho_env*RSN**3))**(1.0/(3.0-n))
     rhoc = 3.0*(1.0-xm)*MSN/(4.0*PI*rc**3)
     rho0 = rhoc*(RSN/rc)**(-n)
     vmax = Ek**0.5*(2.0*PI*rhoc*rc**5/(5.0*RSN**2) + &
@@ -295,7 +298,7 @@ contains
     write(logu,'(1x,a,es12.5)') "Core density = ", rhoc
     write(logu,'(1x,a,es12.5)') "Core radius  = ", rc
     write(logu,'(1x,a,es12.5)') "Outer density  = ", rho0
-    write(logu,'(1x,a,es12.5)') "4*rho_ism      = ", 4*ism_dens
+    write(logu,'(1x,a,es12.5)') "4*rho_ism      = ", 4*rho_env
     write(logu,'(1x,a,es12.5)') "Outer velocity = ", vmax
     write(logu,'(1x,a,es12.5)') "Pres = ", pres
     write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
