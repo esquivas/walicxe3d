@@ -49,6 +49,7 @@ MODULES_MAIN= \
 constants.o \
 parameters.o \
 globals.o \
+uniformISM.o \
 snr.o \
 winds.o \
 orbits.o \
@@ -157,7 +158,7 @@ prebuild :
 	@$(COMPILER) $(CFLAGS) -c $^ -o $@
 
 clean :
-	rm -f *.o *.mod
+	rm -f $(PROGRAM) *.o *.mod
 
 cleanall :
 	rm -f *.o *.mod
