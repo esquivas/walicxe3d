@@ -32,7 +32,7 @@
 ! This is done using an equivalent max-level resolution of 128^3 and using
 ! four parallel processes.
 
-! In the userInitialConditions subroutine we use imposeSNR and imposeSNRIa
+! In the setInitialConditions subroutine we use imposeSNR and imposeSNRIa
 ! subroutines to detonate the initial remnants. These subroutines must be
 ! passed two arguments: a snr_params_type data object which contains the
 ! parameters of the snr, and the flow variables vector (uvars), which are
@@ -73,7 +73,7 @@ module userconds
 !!      section marked [1].
 !!   2) You can define aditional module-wide global variables and parameters
 !!      in the section marked [2].
-!!   3) Fill in the subroutine userInitialCondition(), marked [3], which
+!!   3) Fill in the subroutine setInitialCondition(), marked [3], which
 !!      is called at the beginning of the simulation.
 !!   4) Optionally, fill in the subroutine userBoundary(), marked [4],
 !!      which is called at the end of each boundary exchange operation.
@@ -86,8 +86,8 @@ module userconds
   use globals
   ! ============================================
   ! [1] Add HERE any aditional modules required by your simulation
- 
-  ! It's important to import the snr module here
+
+  use uniformISM
   use snr
 
   ! ============================================
@@ -100,6 +100,8 @@ module userconds
 
   ! We can declare the snr parameters objects here. We'll fill them out
   ! during the initial conditions.
+  type(ism_params_type) :: ism
+
   type(snr_params_type) :: snr1
   type(snr_params_type) :: snr2
   type(snr_params_type) :: snr3
@@ -108,7 +110,7 @@ module userconds
 
 contains
 
-  subroutine userInitialCondition (uvars)
+  subroutine setInitialCondition (uvars)
   ! ============================================
   ! [3] USER-DEFINED INITIAL CONDITIONS
   !
@@ -118,7 +120,7 @@ contains
   !! is imposed. It is to be modified by the user to define the problem-
   !! specific Initial Condition.
   !!
-  !! IMPORTANT: This subroutine receives the FLOW variables array to be 
+  !! IMPORTANT: This subroutine receives the FLOW variables array to be
   !! modified as argument 'uvars'. The subroutine must modify this array,
   !! *NOT* the global arrays U, UP or PRIMS.
   !!
@@ -148,6 +150,19 @@ contains
 
     ! ============================================
 
+    !  uniform ISM parameters
+    ism%mu   = mu0
+    ism%dens = 1.0 * AMU * ism%mu
+    ism%temp = 1e3
+    ism%vx   = 0.
+    ism%vy   = 0.
+    ism%vz   = 0.
+#ifdef PASB
+    ism%bx   = 0.
+    ism%by   = 0.
+    ism%bz   = 0.
+#endif
+
     ! Parameters of the first SNR
     snr1%xc = 5.0*PC
     snr1%yc = 5.0*PC
@@ -156,6 +171,7 @@ contains
     snr1%mass = 4*MSUN
     snr1%energy = 1E51
     snr1%chi = 0.5
+    snr1%rho_env = ism%dens
     snr1%time = 0.0
 
     ! Parameters of the second SNR
@@ -165,6 +181,7 @@ contains
     snr2%radius = 1.0*PC
     snr2%mass = 1.4*MSUN
     snr2%energy = 1E51
+    snr2%rho_env = ism%dens
     snr2%chi = 0.5
     snr2%time = 0.0
 
@@ -175,16 +192,21 @@ contains
     snr3%radius = 1.0*PC
     snr3%mass = 1.4*MSUN
     snr3%energy = 1E51
+    snr3%rho_env = ism%dens
     snr3%chi = 0.5
     snr3%time = 500*YR
+
+
+    ! fill the domain with a uniform ism
+    call impose_uniform_ism(ism,uvars)
 
     ! The first two remnants are detonated as initial conditions
     call detonateSNR(snr1, uvars)
     call detonateSNRIa(snr2, uvars)
 
     ! ============================================
-    
-  end subroutine userInitialCondition
+
+  end subroutine setInitialCondition
 
   !=============================================================================
 
@@ -197,11 +219,11 @@ contains
   !! boundary have been applied to all blocks. It allows the user to
   !! to impose an arbitrary boundary condition on the simulation.
   !!
-  !! IMPORTANT: This subroutine receives the FLOW variables array to be 
+  !! IMPORTANT: This subroutine receives the FLOW variables array to be
   !! modified as argument 'uvars'. The subroutine must modify this array,
   !! *NOT* the global arrays U and UP.
   !!
-  !! The structure of this array is described in the userInitialConditions()
+  !! The structure of this array is described in the setInitialConditions()
   !! subroutine documentation above.
   ! ============================================
 
@@ -209,15 +231,15 @@ contains
     real, intent(inout) :: uvars (nbMaxProc, neqtot, &
                            nxmin:nxmax, nymin:nymax, nzmin:nzmax)
     ! ============================================
-    
-    ! We check both for time and armed status, and detonate when 
+
+    ! We check both for time and armed status, and detonate when
     ! both become true. The armed property is set to false automatically
     ! by the subroutine (but can be reset by the user, if he so wishes).
     ! Also note how we de-scale the time variable to physical units.
     if ((time*t_sc.ge.snr3%time).and.(snr3%armed)) then
       call detonateSNRIa(snr3,uvars)
     end if
-    
+
     ! ============================================
 
   end subroutine userBoundary
