@@ -119,7 +119,7 @@ module parameters
   ! and 2) having a lot of small blocks, which makes the AMR very efficient
   ! but increases the amount of communication.
   ! MUST be a power of two. A good value is 16.
-  integer, parameter :: ncells_block = 16
+  integer, parameter :: ncells_block = 8
 
   ! Refinement / Coarsening thresholds
   ! These are the maximum relative gradients required to mark a block for
@@ -181,7 +181,7 @@ module parameters
   character(*), parameter :: statetpl  = "State.YYYY"
 
   !> Send everything output to stdout to a logfile?
-  logical, parameter :: logged = .false.
+  logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
   character(*), parameter :: logdir = "./logs/"!datadir
 
@@ -242,10 +242,8 @@ module parameters
   real, parameter :: cooling_limit = 0.5
 
   ! ============================================
-  ! ISM (base flow) Properties
-  ! ============================================
-
   ! General gas parameters
+  ! ============================================
 
   !> Heat capacity ratio (5/3 for monoatomic ideal gas)
   real, parameter :: gamma = 5.0/3.0
@@ -255,30 +253,6 @@ module parameters
   real, parameter :: mui = 0.61
   !> Gas is considered ionized above this temp (in K)
   real, parameter :: ion_thres = 1.0e4
-
-  ! ISM (base flow) parameters -- all in cgs
-  !> ISM mean atomic mass per particle (amu)
-  real, parameter :: ism_mu0  = mu0
-  !> ISM mass density (g/cm^3)
-  real, parameter :: ism_dens = 1.0 * ism_mu0 * AMU
-  !> ISM temperature (K)
-  real, parameter :: ism_temp = 1.0e3
-  !> ISM x-velocity (cm/s)
-  real, parameter :: ism_vx = 0.0
-  !> ISM y-velocity (cm/s)
-  real, parameter :: ism_vy = 0.0
-  !> ISM z-velocity (cm/s)
-  real, parameter :: ism_vz = 0.0
-  !> ISM metallicity (ignored if cooling type is not COOL_TABLE_METAL)
-  real, parameter :: ism_metal = 1.0
-
-  ! Magnetic field (only needed when passive magnetic field is enabled)
-  ! All values given in gauss
-#ifdef PASBP
-  real, parameter :: ism_bx = 0.0     !< ISM B_x field (G)
-  real, parameter :: ism_by = 0.0     !< ISM B_y field (G)
-  real, parameter :: ism_bz = 0.0     !< ISM B_z field (G)
-#endif
 
   ! ============================================
   ! Unit Scalings
