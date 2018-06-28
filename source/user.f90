@@ -35,7 +35,7 @@ module userconds
 !!      section marked [1].
 !!   2) You can define aditional module-wide global variables and parameters
 !!      in the section marked [2].
-!!   3) Fill in the subroutine userInitialCondition(), marked [3], which
+!!   3) Fill in the subroutine setInitialCondition(), marked [3], which
 !!      is called at the beginning of the simulation.
 !!   4) Optionally, fill in the subroutine userBoundary(), marked [4],
 !!      which is called at the end of each boundary exchange operation.
@@ -50,7 +50,7 @@ module userconds
   ! [1] Add HERE any aditional modules required by your simulation
 
   ! > YOUR MODULES HERE >
- 
+
   ! ============================================
   implicit none
 
@@ -65,7 +65,7 @@ module userconds
 
 contains
 
-  subroutine userInitialCondition (uvars)
+  subroutine setInitialCondition (uvars)
   ! ============================================
   ! [3] USER-DEFINED INITIAL CONDITIONS
   !
@@ -75,7 +75,7 @@ contains
   !! is imposed. It is to be modified by the user to define the problem-
   !! specific Initial Condition.
   !!
-  !! IMPORTANT: This subroutine receives the FLOW variables array to be 
+  !! IMPORTANT: This subroutine receives the FLOW variables array to be
   !! modified as argument 'uvars'. The subroutine must modify this array,
   !! *NOT* the global arrays U, UP or PRIMS.
   !!
@@ -108,8 +108,8 @@ contains
     ! > YOUR INITIAL CONDITIONS CODE HERE <
 
     ! ============================================
-    
-  end subroutine userInitialCondition
+
+  end subroutine setInitialCondition
 
   !=============================================================================
 
@@ -122,11 +122,11 @@ contains
   !! boundary have been applied to all blocks. It allows the user to
   !! to impose an arbitrary boundary condition on the simulation.
   !!
-  !! IMPORTANT: This subroutine receives the FLOW variables array to be 
+  !! IMPORTANT: This subroutine receives the FLOW variables array to be
   !! modified as argument 'uvars'. The subroutine must modify this array,
   !! *NOT* the global arrays U and UP.
   !!
-  !! The structure of this array is described in the userInitialConditions()
+  !! The structure of this array is described in the setInitialConditions()
   !! subroutine documentation above.
   ! ============================================
 
@@ -135,8 +135,8 @@ contains
                            nxmin:nxmax, nymin:nymax, nzmin:nzmax)
     ! ============================================
 
-    ! > YOUR BOUNDARY CONDITIONS CODE HERE <   
- 
+    ! > YOUR BOUNDARY CONDITIONS CODE HERE <
+
     ! ============================================
 
   end subroutine userBoundary
