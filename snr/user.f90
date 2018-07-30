@@ -153,7 +153,7 @@ contains
     !  uniform ISM parameters
     ism%mu   = mu0
     ism%dens = 1.0 * AMU * ism%mu
-    ism%temp = 1e3
+    ism%temp = 1.e3
     ism%vx   = 0.
     ism%vy   = 0.
     ism%vz   = 0.
