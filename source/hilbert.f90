@@ -9,8 +9,21 @@
 !! @n Note: this subroutine was adapted from a subroutine of the RAMSES code
 !! RAMSES is developed by Romain Teyssier (the copyright holder is the
 !! Commissariat a l'energie atomique et aux energies alternatives, CEA) and
-!! is published under the CeCILL Free Software license, which can be 
+!! is published under the CeCILL Free Software license, which can be
 !! in http://www.cecill.info/
+
+!===============================================================================
+
+!> @brief Hilbert Key
+!> @details This module contains sa single routine that returns a key along
+!> a 3D Hilbert curve, used to balance the load
+
+module hilbert
+
+  use clean_quit, only : clean_abort
+  implicit none
+
+contains
 
 !===============================================================================
 
@@ -112,3 +125,5 @@ subroutine HKey3 (x, y, z, order, hk)
   end do
 
 end subroutine HKey3
+
+end module hilbert
