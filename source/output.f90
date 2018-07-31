@@ -21,15 +21,28 @@
 ! You should have received a copy of the GNU General Public License
 ! along with this program.  If not, see http://www.gnu.org/licenses/.
 
+!> @brief Output Module
+!> @details This module calls subroutines and utilities needed to balance
+!> the workload among different processors, following a hilbert courve.
+
+module output
+
+  implicit none
+
+contains
+
 !===============================================================================
 
-!> @brief Output simulation data in any format required
+!> @brief WriteOutput simulation data in any format required
 !> param noutput The output number
-subroutine output (noutput)
+subroutine writeOutput (noutput)
 
   use parameters
   use globals
   use tictoc
+  use clean_quit, only : clean_abort
+  use hydro_core, only : updatePrims
+  use utils, only : replace
   implicit none
 
   integer, intent(in) :: noutput
@@ -119,7 +132,7 @@ subroutine output (noutput)
   write(logu,'(1x,a)') stamp()
   write(logu,*) ""
 
-end subroutine output
+end subroutine writeOutput
 
 !===============================================================================
 
@@ -128,6 +141,8 @@ subroutine writeBin (noutput)
 
   use parameters
   use globals
+  use clean_quit, only : clean_abort
+  use utils, only : replace
   implicit none
 
   integer, intent(in) :: noutput
@@ -189,6 +204,8 @@ subroutine writeState (noutput)
 
   use parameters
   use globals
+  use clean_quit, only : clean_abort
+  use utils,      only : replace
   implicit none
 
   integer, intent(in) :: noutput
@@ -240,6 +257,9 @@ subroutine write3DVTKBlocks (noutput)
 
   use parameters
   use globals
+  use clean_quit,    only : clean_abort
+  use utils,         only : replace
+  use adaptive_mesh, only : meshlevel, getRefCorner
   implicit none
 
   integer, intent(in) :: noutput
@@ -708,6 +728,9 @@ subroutine write3DVTKGrid (noutput)
 
   use parameters
   use globals
+  use clean_quit,    only : clean_abort
+  use utils,         only : replace
+  use adaptive_mesh, only : getRefCorner, meshlevel, getOwner, getHilbertKey
   implicit none
 
   integer, intent(in) :: noutput
@@ -723,7 +746,7 @@ subroutine write3DVTKGrid (noutput)
   real(kind=4) :: xx, yy, zz
   integer :: i, j, k, p, unitout, bID, istat, owner
   integer :: nb, ncells, npoints, lvl, counter
-  real(kind=8) :: hk
+  integer :: hk
   real(kind=4) :: hilb
 
   ! DEBUG
@@ -892,6 +915,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
 
   use parameters
   use globals
+  use hydro_core, only : calcTemp
   implicit none
 
   integer, intent(in) :: nx, ny
@@ -1010,5 +1034,6 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
 
 end subroutine write2DMapVTK
 
-
 !===============================================================================
+
+end module output
