@@ -403,6 +403,25 @@ end subroutine prim2fluxes
 
 !===============================================================================
 
+!> @brief Calculates the soundspeed given a vector of primitives
+!> @param pvars Vector of primitive variables
+!> @param csound The hydrodynamical speed of sound
+subroutine sound (pvars, csound)
+
+  use parameters
+  implicit none
+
+  real, intent(in) :: pvars(neqtot)
+  real, intent(out) :: csound
+
+  csound = sqrt(gamma*pvars(5)/pvars(1))
+
+  return
+
+end subroutine sound
+
+!===============================================================================
+
 !> @brief Swaps the x and y components of a vector of hydro variables
 !> @param vec The vector to be swapped
 subroutine swapxy (vec)
