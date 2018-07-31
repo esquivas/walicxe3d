@@ -33,7 +33,11 @@ program Walicxe3D
 
   use parameters   ! Code parameters
   use globals      ! Runtime global variables
-  use tictoc       ! Time-measuring library
+  use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
+  use init
+  use hydro_core,    only : updatePrims
+  use load_balance,  only : loadBalance
+  use output,        only : writeOutput
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
@@ -60,7 +64,7 @@ program Walicxe3D
 
   ! Write initial condition to disk
   if (nextout.eq.0) then
-    call output (0)
+    call writeOutput (0)
     nextout = 1
   end if
 
@@ -76,28 +80,28 @@ program Walicxe3D
     write(logu,'(a)') "================================================================================"
 
     ! Hydro Solver
-    call hydroSolver ()
+    !call hydroSolver ()
 
     ! Update primitives in all blocks
-    call updatePrims ()
+    !call updatePrims ()
 
     ! Radiative cooling
-    call cooling ()
+    !call cooling ()
 
     ! Update AMR grid
-    call admesh ()
+    !call admesh ()
 
     ! Load balance
-    call loadBalance ()
+    !call loadBalance ()
 
     ! Data output (if scheduled)
     if (time.ge.nextout*dtout/t_sc) then
-      call output(nextout)
+      call writeOutput(nextout)
       nextout = nextout + 1
     end if
 
     ! Report progress
-    call main_report ()
+    !call main_report ()
 
     ! Everyone stop here
     call mpi_barrier (mpi_comm_world, ierr)
@@ -106,10 +110,10 @@ program Walicxe3D
 
   ! Deallocate globals and terminate execution
   write(logu,*) ""
-  write(logu,'(a)') "================================================================================"  
+  write(logu,'(a)') "================================================================================"
   write(logu,'(a)') STAMP()
   write(logu,'(a)') 'Execution complete!'
   write(logu,'(a,a)') 'Total elapsed time: ', nicetoc(start_mark)
-  call deinit()
+!  call deinit()
 
 end program Walicxe3D
