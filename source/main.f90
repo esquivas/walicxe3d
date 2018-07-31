@@ -36,6 +36,7 @@ program Walicxe3D
   use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
   use init
   use hydro_core,    only : updatePrims
+  use adaptive_mesh, only : admesh
   use load_balance,  only : loadBalance
   use output,        only : writeOutput
   implicit none    ! ALWAYS mandatory
@@ -83,16 +84,16 @@ program Walicxe3D
     !call hydroSolver ()
 
     ! Update primitives in all blocks
-    !call updatePrims ()
+    call updatePrims ()
 
     ! Radiative cooling
     !call cooling ()
 
     ! Update AMR grid
-    !call admesh ()
+    call admesh ()
 
     ! Load balance
-    !call loadBalance ()
+    call loadBalance ()
 
     ! Data output (if scheduled)
     if (time.ge.nextout*dtout/t_sc) then
