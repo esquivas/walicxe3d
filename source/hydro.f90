@@ -63,7 +63,7 @@ subroutine hydroSolver ()
   call tic(mark1)
 
   select case (solver_type)
-  
+
     case (SOLVER_LAX)
       call LaxFriedrichs ()
 
@@ -77,7 +77,7 @@ subroutine hydroSolver ()
       call Godunov (2)
 
   end select
-  
+
   write(logu,*) ""
   write(logu,'(1x,a,a)') "Integrator (total)=", nicetoc(mark1)
 
@@ -132,7 +132,7 @@ subroutine getTimestep (dt_glob)
               dz(ilev)/(abs(PRIM(nb,4,i,j,k))+cs) )
 
             ! Cooling timestep - not needed at the moment
-      
+
           end do
         end do
       end do
@@ -170,14 +170,14 @@ subroutine doStep ()
   integer :: nb, bID, i, j, k
 
   time = time + dt
- 
+
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
     if (bID.ne.-1) then
 
       do i=1,ncells_x
         do j=1,ncells_y
-          do k=1,ncells_z          
+          do k=1,ncells_z
             U(nb,:,i,j,k) = UP(nb,:,i,j,k)
           end do
         end do
@@ -185,7 +185,7 @@ subroutine doStep ()
 
     end if
   end do
-  
+
 end subroutine doStep
 
 !===============================================================================
@@ -220,24 +220,5 @@ subroutine viscosity (bIndx, U, UP)
   end do
 
 end subroutine viscosity
-
-!===============================================================================
-
-!> @brief Calculates the soundspeed given a vector of primitives
-!> @param pvars Vector of primitive variables
-!> @param csound The hydrodynamical speed of sound
-subroutine sound (pvars, csound)
-
-  use parameters
-  implicit none
-
-  real, intent(in) :: pvars(neqtot)
-  real, intent(out) :: csound
-
-  csound = sqrt(gamma*pvars(5)/pvars(1))
-
-  return
-
-end subroutine sound
 
 !===============================================================================
