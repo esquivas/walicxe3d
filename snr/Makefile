@@ -49,36 +49,41 @@ MODULES_MAIN= \
 constants.o \
 parameters.o \
 globals.o \
-uniformISM.o \
-snr.o \
-winds.o \
-orbits.o \
-user.o
+
 
 # Dependent source files and modules in the MAIN CODE
 OBJECTS_MAIN= \
-initflow.o \
 tictoc.o \
-admesh.o \
-initmain.o \
-basegrid.o \
-boundary.o \
-loadbalance.o \
-hilbert.o \
-deinit.o \
-output.o \
+clean_quit.o \
+hydro_core.o \
 utils.o \
-cut.o \
-prims.o \
-hydro.o \
-godunov.o \
-lax.o \
-hll.o \
-hllc.o \
-cooling.o \
-warmstart.o \
-report.o \
+hilbert.o \
+adaptive_mesh.o \
+loadbalance.o \
+uniformISM.o  \
+snr.o \
+winds.o \
+orbits.o \
+user.o \
+init.o \
+output.o \
 main.o
+
+#
+#
+
+#basegrid.o \
+#boundary.o \
+#output.o \
+#cut.o \
+#hydro.o \
+#godunov.o \
+#lax.o \
+#hll.o \
+#hllc.o \
+#cooling.o \
+#report.o \
+
 
 # List of modules and objects to compile the Column Density facility
 OBJECTS_COLDENS= \
