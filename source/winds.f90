@@ -24,7 +24,7 @@
 !===============================================================================
 
 !> @brief Imposes a spherical wind source
-!> @details This user-defined module establishes the parameters, 
+!> @details This user-defined module establishes the parameters,
 !! variables and subroutines required to impose a spherical wind source.
 !!
 !! How to use this module.
@@ -35,7 +35,7 @@
 !!      type_plane_wind : a planar wind (to be used as in inflow condition)
 !!    Then, the user must specify the corresponding wind parameters.
 !! 2) The user must modify the userBC() subroutine in the user.f90 source
-!!    file, adding a call to the corresponding subroutine: 
+!!    file, adding a call to the corresponding subroutine:
 
 module winds
 
@@ -108,22 +108,24 @@ module winds
     real :: metal = 1.0
   end type plane_wind_type
   !===============================
-  
+
 contains
 
   ! ============================================
   !> @brief Imposes a spherical wind source on the simulation
   !> @details Simulates a spherical wind source by setting the flow
-  !! conditions in a region of given radius centered at (xc,yc,zc), 
+  !! conditions in a region of given radius centered at (xc,yc,zc),
   !! in which a steady-state wind solution is imposed with the given
   !! mass-loss rate, terminal speed and temperature.
   !> @param wind_params A spherical_wind_type variable containing the
   !! wind parameters. See the module documentation for further details.
   !> @param uvars Flow variables array to be modified
   subroutine imposeSphericalWind (wind_params, uvars)
- 
+
     use parameters
     use globals
+    use hydro_core, only : prim2flow
+    use adaptive_mesh, only : refineZone, cellPos
     implicit none
 
     type(spherical_wind_type), intent(in) :: wind_params
@@ -173,7 +175,7 @@ contains
       zone(5) = zc - radius
       zone(6) = zc + radius
       zlevel = maxlev
-      call refineZone (zone, zlevel)  
+      call refineZone (zone, zlevel)
     end if
 
     ! Impose flow conditions, where applicable
@@ -237,14 +239,16 @@ contains
 
   !> @brief Imposes a planar wind on one of the edges of the simulation box.
   !> @details Simulates a planar wind entering the simulation box
-  !! by setting the flow conditions in the appropriate boundary layer. 
+  !! by setting the flow conditions in the appropriate boundary layer.
   !> @params wind_params A plane_winds_type variable containing the wind
   !! parameters. See the module documentation for further details.
   !> @param uvars Flow variables array to be modified
   subroutine imposePlaneWind (wind_params, uvars)
- 
+
     use parameters
     use globals
+    use hydro_core, only : prim2flow
+    use adaptive_mesh, only : neighbors
     implicit none
 
     type(plane_wind_type), intent(in) :: wind_params
