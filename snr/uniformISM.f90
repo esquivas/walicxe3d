@@ -84,14 +84,20 @@ contains
   !> @param uvars Full flow variables array to be modified (U or UP)
   subroutine impose_uniform_ism (ism_params, uvars)
 
-    use parameters
-    use globals
+    use constants,  only : AMU, KB, COOL_TABLE_METAL
+    use globals,    only : localBlocks, logu
+    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin, nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas
+    use hydro_core, only : prim2flow
+
     implicit none
     type(ism_params_type), intent(inout) :: ism_params
     real, intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
 
     integer :: nb, bID, i, j, k
-    real    :: dens, pres, temp, vx, vy, vz, bx, by, bz, mu, metal
+    real    :: dens, pres, temp, vx, vy, vz, mu, metal
+#ifdef PASB
+    real    :: bx, by, bz
+#endif
     real    :: primit(neqtot), flowvars(neqtot)
 
     write(logu,'(1x,a)') "> Imposing uniform background medium ..."
