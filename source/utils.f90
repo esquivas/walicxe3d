@@ -23,6 +23,17 @@
 
 !===============================================================================
 
+!> @brief Miscelaneous subroutines/utilities
+!> @details General use utilities
+
+module utils
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief Replaces substring a with subtring b in string str.
 !> @details If a is not found within str, str is left unchanged.
 !! It is up to the caller to make sure str is long
@@ -63,7 +74,7 @@ end subroutine
 !> @param element The element to be found
 !> @param list The list (a 1D integer array)
 !> @param length The length of the list
-!> @param indx The returned position of the element within the list 
+!> @param indx The returned position of the element within the list
 subroutine find (element, list, length, indx)
 
   implicit none
@@ -97,7 +108,7 @@ end subroutine find
 !> @param element The element to be inserted
 !> @param list The list (a 1D integer array)
 !> @param length The length of the list
-!> @param indx The returned position of the element within the list 
+!> @param indx The returned position of the element within the list
 subroutine put (element, list, length, indx)
 
   implicit none
@@ -204,7 +215,7 @@ end subroutine popAll
 !===============================================================================
 
 !> @brief Takes in a time in seconds and returns it as a nice string
-!> @details It will scale the time unit used so as to produce a 
+!> @details It will scale the time unit used so as to produce a
 !! human-friendly output, in kyr, yr or days.
 !> @param time A time to be converted to a nice string. MUST BE IN SECONDS.
 !> @param timestr The returned string
@@ -233,3 +244,96 @@ end subroutine nicetime
 
 !===============================================================================
 
+
+!> @brief Quicksorts a list using an auxiliary list of keys (in-place)
+!> @param l The size of the lists
+!> @param list The list of items to be sorted
+!> @param keys The list of keys used for the sort
+!> @param first The index of the first element to be sorted
+!> @param last The index of the last element to be sorted
+recursive subroutine QuickSort (l, list, keys, first, last)
+
+  implicit none
+  integer, intent(in) :: l
+  integer, intent(inout) :: list(l)
+  integer, intent(inout) :: keys(l)
+  integer, intent(in) :: first
+  integer, intent(in) :: last
+
+  integer :: pivotIndex, newPivotIndex
+
+  ! Only do something if the lists have at least 2 elements
+  if (first.lt.last) then
+
+    ! Choose a pivot - middle item
+    pivotIndex = first + (last-first+1)/2  ! Implicit conversion to integer
+
+    ! Partition lists in-place
+    call Partition (l, list, keys, first, last, pivotIndex, newPivotIndex)
+
+    ! Recursively sort each sublist
+    call QuickSort (l, list, keys, first, newPivotIndex - 1)
+    call QuickSort (l, list, keys, newPivotIndex + 1, last)
+
+  end if
+
+end subroutine QuickSort
+
+!===============================================================================
+
+!> @brief In-place auxiliary partition routine for QuickSort
+!> @param l The size of the lists
+!> @param list The list of items to be sorted
+!> @param keys The list of keys used for the sort
+subroutine Partition (l, list, keys, first, last, pivotIndex, storeIndex)
+
+  implicit none
+  integer, intent(in) :: l
+  integer, intent(inout) :: list(l)
+  integer, intent(inout) :: keys(l)
+  integer, intent(in) :: first
+  integer, intent(in) :: last
+  integer, intent(in) :: pivotIndex
+  integer, intent(out) :: storeIndex
+
+  integer :: pivotKey
+  integer :: temp, i
+
+  ! Get the pivot's key
+  pivotKey = keys(pivotIndex)
+
+  ! Swap pivot value/key with item in last position
+  temp = list(last)
+  list(last) = list(pivotIndex)
+  list(pivotIndex) = temp
+  temp = keys(last)
+  keys(last) = keys(pivotIndex)
+  keys(pivotIndex) = temp
+
+  ! Swap items to begginning if key smaller than pivot
+  storeIndex = first
+  do i=first,last-1
+    if (keys(i).le.pivotKey) then
+      temp = list(storeIndex)
+      list(storeIndex) = list(i)
+      list(i) = temp
+      temp = keys(storeIndex)
+      keys(storeIndex) = keys(i)
+      keys(i) = temp
+      storeIndex = storeIndex + 1
+    end if
+  end do
+
+  ! Move pivot to its final position
+  temp = list(last)
+  list(last) = list(storeIndex)
+  list(storeIndex) = temp
+  temp = keys(last)
+  keys(last) = keys(storeIndex)
+  keys(storeIndex) = temp
+
+end subroutine Partition
+
+!===============================================================================
+
+end module utils
