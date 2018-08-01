@@ -92,7 +92,7 @@ contains
     use parameters
     use globals
     use hydro_core, only : prim2flow
-    use adaptive_mesh, only : refineZone, cellPos
+    use amr       , only : refineZone, cellPos
     implicit none
     type(snr_params_type), intent(inout) :: snr_params
     real, intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
@@ -249,7 +249,7 @@ contains
     use parameters
     use globals
     use hydro_core, only : prim2flow
-    use adaptive_mesh, only : refineZone, cellPos
+    use amr,        only : refineZone, cellPos
     implicit none
     type(snr_params_type), intent(inout) :: snr_params
     real, intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
