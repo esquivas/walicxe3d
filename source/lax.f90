@@ -23,12 +23,27 @@
 
 !===============================================================================
 
+!> @brief Lax Friedrichs module
+!> @details The module contains upper level wrapper to advance the equations
+!> in time using a 1st order Lax Friedrichs method, very simple and robust
+!> but exteremelly diffusive
+module Lax
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief First order Lax-Friefrichs scheme
 subroutine LaxFriedrichs ()
 
   use parameters
   use globals
   use tictoc
+  use hydro_core, only : prim2fluxes, calcPrimsAll
+  use amr,        only : meshlevel
+  use boundaries, only : boundary
   implicit none
 
   integer :: nb, bID, lev, i, j, k, mark
@@ -75,12 +90,14 @@ subroutine LaxFriedrichs ()
           end do
         end do
       end do
-      
-!      write(logu,*) "Integrated block", bID, "in", nicetoc(mark) 
 
-    end if     
+!      write(logu,*) "Integrated block", bID, "in", nicetoc(mark)
+
+    end if
   end do
 
 end subroutine LaxFriedrichs
 
 !===============================================================================
+
+end module Lax
