@@ -58,32 +58,24 @@ clean_quit.o \
 hydro_core.o \
 utils.o \
 hilbert.o \
-adaptive_mesh.o \
+amr.o \
 loadbalance.o \
 uniformISM.o  \
 snr.o \
 winds.o \
 orbits.o \
 user.o \
+cooling.o \
 init.o \
 output.o \
+boundary.o \
+lax.o \
+hll.o \
+hllc.o \
+godunov.o \
+hydro_solver.o \
+report.o  \
 main.o
-
-#
-#
-
-#basegrid.o \
-#boundary.o \
-#output.o \
-#cut.o \
-#hydro.o \
-#godunov.o \
-#lax.o \
-#hll.o \
-#hllc.o \
-#cooling.o \
-#report.o \
-
 
 # List of modules and objects to compile the Column Density facility
 OBJECTS_COLDENS= \
