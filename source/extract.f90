@@ -4,7 +4,7 @@
 !> @author Juan C. Toledo
 !> @date 18/Feb/2013
 
-! Copyright (c) 2014 Juan C. Toledo and Alejandro Esquivel 
+! Copyright (c) 2014 Juan C. Toledo and Alejandro Esquivel
 !
 ! This file is part of Walicxe3D.
 !
@@ -27,7 +27,7 @@
 program extract
 
   implicit none
-  
+
   ! Named constants
   real, parameter :: AXIS_X = 1
   real, parameter :: AXIS_Y = 2
@@ -38,7 +38,7 @@ program extract
   real, parameter :: AMU = 1.660539E-24
   real, parameter :: KB  = 1.380658E-16
   real, parameter :: PI  = 3.141593
-  
+
   ! ============================================================================
   ! PROGRAM CONFIGURATION
   ! ============================================================================
@@ -84,8 +84,8 @@ program extract
   real, parameter :: gamma = 5.0/3.0
   real, parameter :: mu0 = 1.3
   real, parameter :: mui = 0.61
-  real, parameter :: ion_thres = 10000.0 
-  real, parameter :: CV = 1.0/(gamma-1.0) 
+  real, parameter :: ion_thres = 10000.0
+  real, parameter :: CV = 1.0/(gamma-1.0)
 
   ! Unit scalings
   real, parameter :: l_sc = 1.0*PC          !< length scale (cm)
@@ -112,20 +112,20 @@ program extract
   integer :: mesh(7), unitin, nblocks, plane, nout
   integer :: nxmap, nymap, nx, ny, cell_count
   real :: dx(maxlev), pvars(neqtot), uvars(neqtot)
-  character(256) :: filename  
+  character(256) :: filename
 
   real, allocatable :: block(:,:,:,:)
   real, allocatable :: outmap(:,:,:)
 
   ! ====================================================
-  
+
   ! Allocate output map
   if (cut_axis.eq.AXIS_X) then
     nxmap = nbrooty*2**(maxlev-1)*ncells_y
     nymap = nbrootz*2**(maxlev-1)*ncells_z
   else if (cut_axis.eq.AXIS_Y) then
     nxmap = nbrootx*2**(maxlev-1)*ncells_x
-    nymap = nbrootz*2**(maxlev-1)*ncells_z 
+    nymap = nbrootz*2**(maxlev-1)*ncells_z
   else if (cut_axis.eq.AXIS_Z) then
     nxmap = nbrootx*2**(maxlev-1)*ncells_x
     nymap = nbrooty*2**(maxlev-1)*ncells_y
@@ -186,15 +186,15 @@ program extract
 
       ! Read bID and determine if block intersecs cut plane
       read (unitin) bID
-      read (unitin) block    
-      call meshlevel (bID, mesh, ilev)        
+      read (unitin) block
+      call meshlevel (bID, mesh, ilev)
       call getCellPlane (bID, mesh, plane)
-      
+
       ! If block intersects, extract cell plane
       if (plane.ne.-1) then
-  
+
         blocksused = blocksused + 1
-!        write(*,*) "Cutplane=", plane    
+!        write(*,*) "Cutplane=", plane
         if (cut_axis.eq.AXIS_X) then
           nx = ncells_y
           ny = ncells_z
@@ -204,7 +204,7 @@ program extract
         else if (cut_axis.eq.AXIS_Z) then
           nx = ncells_x
           ny = ncells_y
-        end if          
+        end if
 
         ! Go over cells that intersect cut plane
         do ip=1,nx
@@ -218,8 +218,8 @@ program extract
             else if (cut_axis.eq.AXIS_Y) then
               i = ip
               j = plane
-              k = jp            
-            else if (cut_axis.eq.AXIS_Z) then            
+              k = jp
+            else if (cut_axis.eq.AXIS_Z) then
               i = ip
               j = jp
               k = plane
@@ -231,7 +231,7 @@ program extract
 !            write(*,'(a,1x,i0,1x,i0,1x,i0,1x,a)') &
 !              "Cell", i, j, k, "absolute coords:"
 !            write(*,'(i0,1x,i0,1x,i0)') i1,j1,k1
-              
+
             ! Reduce absolute coords to 2D
             if (cut_axis.eq.AXIS_X) then
               i1 = j1
@@ -239,12 +239,12 @@ program extract
             else if (cut_axis.eq.AXIS_Y) then
               i1 = i1
               j1 = k1
-            else if (cut_axis.eq.AXIS_Z) then            
+            else if (cut_axis.eq.AXIS_Z) then
               i1 = i1
               j1 = j1
             end if
 
-            ! Copy data value into output map. Duplicate value 
+            ! Copy data value into output map. Duplicate value
             ! into multiple cells if block not at highest resolution
 !            write(*,'(a)') "Output map cells:"
             do i_off=0,2**(maxlev-ilev)-1
@@ -272,7 +272,7 @@ program extract
           end do
         end do
 
-      end if     
+      end if
     end do
 
     write(*,'(1x,a,i0,a)') "Extracted data from ", blocksused, " blocks."
@@ -318,9 +318,9 @@ contains
 subroutine getCellPlane (bID, mesh, plane)
 
   implicit none
-  
+
   integer, intent(in) :: bID
-  integer, intent(in) :: mesh(7)  
+  integer, intent(in) :: mesh(7)
   integer, intent(out) :: plane
 
   real :: xl, xh, yl, yh, zl, zh, bl, bh
@@ -342,7 +342,7 @@ subroutine getCellPlane (bID, mesh, plane)
     bh = yh
   else if (cut_axis.eq.AXIS_Z) then
     bl = zl
-    bh = zh  
+    bh = zh
   else
     write(*,'(1x,a)') "Invalid cut axis!!"
   end if
@@ -464,6 +464,7 @@ end subroutine levelOffset
 
 subroutine genfname (rank, nout, dir, template, ext, filename)
 
+  use utils, only : replace
   implicit none
 
   integer, intent(in) :: rank
@@ -525,7 +526,7 @@ subroutine absCoords(bID,i,j,k,mesh,i1,j1,k1)
   i1 = (bx-1)*ncells_x*2**(maxlev-ilev) + (i-1)*2**(maxlev-ilev) + 1
   j1 = (by-1)*ncells_y*2**(maxlev-ilev) + (j-1)*2**(maxlev-ilev) + 1
   k1 = (bz-1)*ncells_z*2**(maxlev-ilev) + (k-1)*2**(maxlev-ilev) + 1
-  
+
   return
 
 end subroutine absCoords
@@ -546,7 +547,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
   real(kind=4) :: xx, yy, zz
   character(100) :: cbuffer
   character(1) :: lf = char(10)
- 
+
   ! Open data file
   unitout = 10
   open (unit=unitout, file=outfname, status='unknown', access='stream', &
@@ -556,10 +557,10 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
     close (unitout)
     stop
   end if
-   
+
   ! Total number of points (cells)
   npoints = nx*ny
-   
+
   ! VTK Header
   write(unitout) "# vtk DataFile Version 4.2", lf
   write(unitout) "Output from Walicxe3D", lf
@@ -587,7 +588,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
       write(unitout) xx
     end do
   end do
-  write(unitout) lf  
+  write(unitout) lf
 
   ! PRESSURE
   write(*,'(1x,a)') " Writing Pressure values ..."
@@ -601,7 +602,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
       write(unitout) xx
     end do
   end do
-  write(unitout) lf  
+  write(unitout) lf
 
   ! TEMPERATURE
   write(*,'(1x,a)') " Writing Temperature values ..."
@@ -616,7 +617,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
       write(unitout) xx
     end do
   end do
-  write(unitout) lf  
+  write(unitout) lf
 
   ! VELOCITY
   write(*,'(1x,a)') " Writing Velocity components ..."
@@ -628,7 +629,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
       yy = outmap(3,i,j)
       zz = outmap(4,i,j)
       if (cut_axis.eq.AXIS_X) then
-        write(unitout) yy, zz, xx 
+        write(unitout) yy, zz, xx
       else if (cut_axis.eq.AXIS_Y) then
         write(unitout) xx, zz, yy
       else if (cut_axis.eq.AXIS_Z) then
@@ -666,7 +667,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
       yy = outmap(7,i,j)
       zz = outmap(8,i,j)
       if (cut_axis.eq.AXIS_X) then
-        write(unitout) yy, zz, xx 
+        write(unitout) yy, zz, xx
       else if (cut_axis.eq.AXIS_Y) then
         write(unitout) xx, zz, yy
       else if (cut_axis.eq.AXIS_Z) then
@@ -773,4 +774,3 @@ end subroutine flow2prim
 !===============================================================================
 
 end program extract
-
