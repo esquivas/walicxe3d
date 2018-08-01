@@ -257,9 +257,9 @@ subroutine write3DVTKBlocks (noutput)
 
   use parameters
   use globals
-  use clean_quit,    only : clean_abort
-  use utils,         only : replace
-  use adaptive_mesh, only : meshlevel, getRefCorner
+  use clean_quit, only : clean_abort
+  use utils,      only : replace
+  use amr,        only : meshlevel, getRefCorner
   implicit none
 
   integer, intent(in) :: noutput
@@ -728,9 +728,9 @@ subroutine write3DVTKGrid (noutput)
 
   use parameters
   use globals
-  use clean_quit,    only : clean_abort
-  use utils,         only : replace
-  use adaptive_mesh, only : getRefCorner, meshlevel, getOwner, getHilbertKey
+  use clean_quit, only : clean_abort
+  use utils,      only : replace
+  use amr,        only : getRefCorner, meshlevel, getOwner, getHilbertKey
   implicit none
 
   integer, intent(in) :: noutput
