@@ -608,7 +608,7 @@ subroutine basegrid ()
   use parameters
   use globals
   use tictoc
-  use adaptive_mesh, only : syncBlockLists
+  use amr, only : syncBlockLists
   implicit none
 
   ! Local variables
