@@ -125,7 +125,7 @@ contains
     use parameters
     use globals
     use hydro_core, only : prim2flow
-    use adaptive_mesh, only : refineZone, cellPos
+    use amr,        only : refineZone, cellPos
     implicit none
 
     type(spherical_wind_type), intent(in) :: wind_params
@@ -248,7 +248,7 @@ contains
     use parameters
     use globals
     use hydro_core, only : prim2flow
-    use adaptive_mesh, only : neighbors
+    use amr,       only : neighbors
     implicit none
 
     type(plane_wind_type), intent(in) :: wind_params
