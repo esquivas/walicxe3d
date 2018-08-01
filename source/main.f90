@@ -33,12 +33,12 @@ program Walicxe3D
 
   use parameters   ! Code parameters
   use globals      ! Runtime global variables
-  use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
+  use tictoc,       only : tic, nicetoc, stamp       ! Time-measuring library
   use init
-  use hydro_core,    only : updatePrims
-  use adaptive_mesh, only : admesh
-  use load_balance,  only : loadBalance
-  use output,        only : writeOutput
+  use hydro_core,   only : updatePrims
+  use amr,          only : admesh
+  use load_balance, only : loadBalance
+  use output,       only : writeOutput
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
