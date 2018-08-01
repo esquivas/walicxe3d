@@ -23,6 +23,19 @@
 
 !===============================================================================
 
+!> @brief Godunov Module
+!> @details The module contains the subroutines and utilities advance the
+!> equations with Godunov type solvers, the approximate Riemann solvers are
+!> included in separate source files.
+
+module GodunovModule
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief Wrapper for Godunov-type numerical solvers
 !> @details Computes intercell numerical fluxes using any Riemann solver and
 !! advances the flow variables one timestep. The solver can be set to be
@@ -32,6 +45,11 @@ subroutine Godunov (order)
   use parameters
   use globals
   use tictoc
+  use hydro_core, only : calcPrimsAll, viscosity
+  use boundaries, only : boundary
+  use HLL,        only : HLLfluxes
+  use HLLC,       only : HLLCfluxes
+
   implicit none
 
   integer, intent(in) :: order
@@ -45,7 +63,7 @@ subroutine Godunov (order)
   ! Halve timestep for first part of second-order HLL
   if (order.eq.2) then
     dtp = dt/2.0
-  else 
+  else
     dtp = dt
   end if
 
@@ -72,7 +90,7 @@ subroutine Godunov (order)
   do bIndx=1,nbMaxProc
     bID = localBlocks(bIndx)
     if (bID.ne.-1) then
-    
+
       ! Compute numerical fluxes  for this block
       select case (solver_type)
 
@@ -89,8 +107,8 @@ subroutine Godunov (order)
 
       ! Apply conservative formula
       call upwindStep (bIndx, dtp)
-      
-      bcount = bcount + 1      
+
+      bcount = bcount + 1
 
     end if
   end do
@@ -139,14 +157,14 @@ subroutine Godunov (order)
         ! Apply numerical viscosity
         call viscosity (bIndx, U, UP)
 
-        bcount = bcount + 1      
+        bcount = bcount + 1
 
       end if
     end do
 
     write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", &
     nicetoc(mark)
-  
+
   end if
 
 end subroutine Godunov
@@ -162,11 +180,12 @@ subroutine upwindStep (locIndx, dtp)
 
   use parameters
   use globals
+  use amr, only : meshlevel
   implicit none
 
   integer, intent(in) :: locIndx
   real, intent(in) :: dtp
-  
+
   integer :: i, j, k, bID, lev
   integer :: ieq   ! DEBUG
   real :: dtdx, dtdy, dtdz
@@ -218,157 +237,4 @@ end subroutine upwindStep
 
 !===============================================================================
 
-!> @brief Obtains wavespeed estimates given primitives at interface
-!> @details Computes wavespeed estimates for the two outer shock waves and the
-!! contact discontinuity (if needed) in the Riemann fan. This routine employs
-!! the x-component of speed.
-!> @param dl Density at "left" of interface
-!> @param dr Density at "right" of interface
-!> @param ul Velocity at "left" of interface
-!> @param ur Velocity at "right" of interface
-!> @param pl Pressure at "left" of interface
-!> @param pr Pressure at "right" of interface
-!> @param sl Wavespeed estimate for "left" moving wave
-!> @param sr Wavespeed estimate for "right" moving wave
-!> @param sst Wavespeed estimate for contact discontinuity
-subroutine wavespeed (primL, primR, sl, sr, sst)
-
-  use parameters
-  implicit none
-
-  real, intent(in) :: primL(neqtot)
-  real, intent(in) :: primR(neqtot)
-  real, intent(out) :: sl
-  real, intent(out) :: sr
-  real, intent(out) :: sst
-
-  real :: dl1, ul1, pl1, cl
-  real :: dr1, ur1, pr1, cr
-
-  ! Unpack primitives
-  dl1 = primL(1)
-  dr1 = primR(1)
-  ul1 = primL(2)
-  ur1 = primR(2)
-  pl1 = primL(5)
-  pr1 = primR(5)
-  
-  ! Sound speeds
-  call sound (primL,cl)
-  call sound (primR,cr)
-
-  ! Compute SL and SR
-  ! Davis direct bounded, 10.38 of Toro
-  sl = min( ul1-cl, ur1-cr )
-  sr = max( ul1+cl, ur1+cr )
-
-  ! Compute S* (HLLC only)
-  if (solver_type.eq.SOLVER_HLLC) then
-    sst = (pr1-pl1 + dl1*ul1*(sl-ul1) - dr1*ur1*(sr-ur1)) / &
-          (dl1*(sl-ul1)-dr1*(sr-ur1))
-  else
-    sst = 0.0
-  end if
-
-  return
-
-end subroutine wavespeed
-
-!===============================================================================
-
-!> @brief Applies the flux limiter to average left/right states
-!> @details This routine uses the X-component of speed.
-!> @param pll Pressure two cells "left" of interface
-!> @param pl Pressure one cell "left" of interface
-!> @param prr Pressure two cells "right" of interface
-!> @param pr Pressure once cell "right" of interface
-!> @param lim Limiter to use. See parameters.f90 for supported options.
-!> @param neqs Number of equations
-subroutine limiter (pll,pl,pr,prr,lim,neqs)
-
-  implicit none
-
-  integer, intent(in) :: neqs
-  integer, intent(in) :: lim
-  real, intent(in) :: pll(neqs)
-  real, intent(in) :: prr(neqs)
-  real, intent(inout) :: pl(neqs)
-  real, intent(inout) :: pr(neqs)
-
-
-  real :: dl, dm, dr, al, ar
-  integer :: ieq
-
-  do ieq=1,neqs
-    dl = pl(ieq) - pll(ieq)
-    dm = pr(ieq) - pl(ieq)
-    dr = prr(ieq) - pr(ieq)
-    al = average(dl, dm, lim)
-    ar = average(dm, dr, lim)
-    pl(ieq) = pl(ieq) + 0.5*al
-    pr(ieq) = pr(ieq) - 0.5*ar
-  end do
-
-contains
-
-  real function average (a,b,opt)
-
-    use constants
-    implicit none
-    
-    real, intent(in) :: a, b
-    integer, intent(in) :: opt
-
-    real :: s, c, d, eps
-
-    select case (opt)
-    
-    case (LIMITER_NONE)
-      average = 0.5*(a+b)
-
-    case (LIMITER_VANLEER)
-      if (a*b.le.0.0) then
-        average = 0.0
-      else
-        average = a*b*(a+b)/(a*a+b*b)
-      end if
-
-    case (LIMITER_MINMOD)
-      s = sign(1.0,a)
-      average = s*max(0.0, min(abs(a), s*b))
-
-    case (LIMITER_ALBADA)   ! NOT WORKING
-      eps = 1.0e-7
-      average = (a*(b*b+eps)+b*(a*a+eps))/(a*a+b*b*eps)
-
-    case (LIMITER_UMIST)
-      s = sign(1.0,a)
-      c = 0.25*a + 0.75*b
-      d = 0.75*a + 0.25*b
-      average = min(2.0*abs(a), 2.0*s*b, s*c, s*d)
-      average = s*max(0.0, average)
-
-    case (LIMITER_WOODWARD)
-      s = sign(1.0,a)
-      c = 0.5*(a+b)
-      average = min(2.0*abs(a), 2*s*b, s*c)
-      average = s*max(0.0, average)
-
-    case (LIMITER_SUPERBEE)
-      s = sign(1.0,b)
-      c = min(2.0*abs(b), s*a)
-      d = min(abs(b),2.0*s*a)
-      average = s*max(0.0,c,d)
-
-    case default
-      average = 0.0
-      write(*,'(a)') "WARNING: no averaging in limiter!"
-      write(*,'(a,i2)') "Passed limiter value: ", opt 
-
-    end select
-
-  end function average
-
-end subroutine limiter
-
-!===============================================================================
+end module GodunovModule
