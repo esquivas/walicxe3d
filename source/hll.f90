@@ -23,6 +23,18 @@
 
 !===============================================================================
 
+!> @brief Harten, Lax, van Leer (HLL) Approximate Riemann Solver Module
+!> @details Computes the  intercell numerical fluxes for every cell interface
+!! in a block using the HLL solver.
+
+module HLL
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief Harten, Lax, van Leer (HLL) Approximate Riemann Solver
 !> @details Computes the intercell numerical fluxes for every cell interface
 !! in a block using the HLL solver. This routine assumes the global vector of
@@ -41,11 +53,13 @@ subroutine HLLfluxes (locIndx, order)
 
   use parameters
   use globals
+  use hydro_core, only : swapxy, swapxz, limiter
+  use amr, only : validCell
   implicit none
 
   integer, intent(in) :: locIndx
   integer, intent(in) :: order
-  
+
   integer :: i, j, k
   real :: pl(neqtot), pr(neqtot), pll(neqtot), prr(neqtot), ff(neqtot)
   logical :: valid
@@ -56,7 +70,7 @@ subroutine HLLfluxes (locIndx, order)
   ! -------------------------------------------
 
   case (1)   ! First-order
-  
+
     do i=0,ncells_x
       do j=0,ncells_y
         do k=0,ncells_z
@@ -87,9 +101,9 @@ subroutine HLLfluxes (locIndx, order)
             call primfhll (pL, pR, ff)
             call swapxz (ff)
             HC(:,i,j,k) = ff(:)
-         
+
           end if
-          
+
         end do
       end do
     end do
@@ -132,24 +146,24 @@ subroutine HLLfluxes (locIndx, order)
             pll(:) = PRIM(locIndx,:,i,j,k-1)
             pl(:)  = PRIM(locIndx,:,i,j,k  )
             pr(:)  = PRIM(locIndx,:,i,j,k+1)
-            prr(:) = PRIM(locIndx,:,i,j,k+2)            
+            prr(:) = PRIM(locIndx,:,i,j,k+2)
             call swapxz (pll)
             call swapxz (pl)
             call swapxz (pr)
             call swapxz (prr)
-            call limiter (pll,pl,pr,prr,limiter_type,neqtot)            
+            call limiter (pll,pl,pr,prr,limiter_type,neqtot)
             call primfhll (pl, pr, ff)
             call swapxz (ff)
             HC(:,i,j,k) = ff(:)
-         
+
           end if
-          
+
         end do
       end do
     end do
-    
+
   end select
-  
+
 end subroutine HLLfluxes
 
 !===============================================================================
@@ -161,18 +175,19 @@ end subroutine HLLfluxes
 subroutine primfhll (pL, pR, ff)
 
   use parameters
+  use hydro_core, only : prim2fluxes, prim2flow
   implicit none
-  
+
   real, intent(in) :: pL(neqtot)
   real, intent(in) :: pR(neqtot)
   real, intent(out) :: ff(neqtot)
-  
+
   real :: sl, sr, sst
   real :: uL(neqtot), uR(neqtot)
   real :: fL(neqtot), fR(neqtot)
 
   ! Calculate wavespeeds
-  call wavespeed (pL, pR, sl, sr, sst)
+  call wavespeedHLL (pL, pR, sl, sr)
 
 !  write(*,*) sl, sr
 
@@ -182,7 +197,7 @@ subroutine primfhll (pL, pR, ff)
     ff(:) = fL(:)
     return
   else if (sr.le.0) then
-    call prim2fluxes (pR, DIM_X, fR)  
+    call prim2fluxes (pR, DIM_X, fR)
     ff(:) = fR(:)
     return
   else
@@ -197,3 +212,52 @@ subroutine primfhll (pL, pR, ff)
 end subroutine primfhll
 
 !===============================================================================
+
+!> @brief Obtains wavespeed estimates given primitives at interface
+!> @details Computes wavespeed estimates for the two outer shock waves in the
+!! Riemann fan. This routine employs the x-component of speed.
+!> @param dl Density at "left" of interface
+!> @param dr Density at "right" of interface
+!> @param ul Velocity at "left" of interface
+!> @param ur Velocity at "right" of interface
+!> @param pl Pressure at "left" of interface
+!> @param pr Pressure at "right" of interface
+!> @param sl Wavespeed estimate for "left" moving wave
+!> @param sr Wavespeed estimate for "right" moving wave
+subroutine wavespeedHLL (primL, primR, sl, sr)
+
+  use parameters
+  use hydro_core, only : sound
+  implicit none
+
+  real, intent(in) :: primL(neqtot)
+  real, intent(in) :: primR(neqtot)
+  real, intent(out) :: sl
+  real, intent(out) :: sr
+
+  real :: dl1, ul1, pl1, cl
+  real :: dr1, ur1, pr1, cr
+
+  ! Unpack primitives
+  dl1 = primL(1)
+  dr1 = primR(1)
+  ul1 = primL(2)
+  ur1 = primR(2)
+  pl1 = primL(5)
+  pr1 = primR(5)
+
+  ! Sound speeds
+  call sound (primL,cl)
+  call sound (primR,cr)
+
+  ! Compute SL and SR
+  ! Davis direct bounded, 10.38 of Toro
+  sl = min( ul1-cl, ur1-cr )
+  sr = max( ul1+cl, ur1+cr )
+
+  return
+
+end subroutine wavespeedHLL
+!===============================================================================
+
+end module HLL
