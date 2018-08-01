@@ -23,6 +23,18 @@
 
 !===============================================================================
 
+!> @brief HLLC Approximate Riemann Solver Module
+!> @details Computes the  intercell numerical fluxes for every cell interface
+!! in a block using the HLLC solver.
+
+module HLLC
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief Contact discontinuity-capturing modification of the
 !! Harten, Lax, van Leer Approximate Riemann Solver (HLLC)
 !> @details This is a modification of the standard HLL Riemann solver, designed
@@ -44,11 +56,13 @@ subroutine HLLCfluxes (locIndx, order)
 
   use parameters
   use globals
+  use hydro_core, only : swapxy, swapxz, limiter
+  use amr, only : validCell
   implicit none
 
   integer, intent(in) :: locIndx
   integer, intent(in) :: order
-  
+
   integer :: i, j, k
   real :: pl(neqtot), pr(neqtot), pll(neqtot), prr(neqtot), ff(neqtot)
   logical :: valid
@@ -59,7 +73,7 @@ subroutine HLLCfluxes (locIndx, order)
   ! -------------------------------------------
 
   case (1)   ! First-order
-  
+
     do i=0,ncells_x
       do j=0,ncells_y
         do k=0,ncells_z
@@ -105,9 +119,9 @@ subroutine HLLCfluxes (locIndx, order)
             call primfhllc (pL, pR, ff)
             call swapxz (ff)
             HC(:,i,j,k) = ff(:)
-         
+
           end if
-          
+
         end do
       end do
     end do
@@ -166,24 +180,24 @@ subroutine HLLCfluxes (locIndx, order)
             pll(:) = PRIM(locIndx,:,i,j,k-1)
             pl(:)  = PRIM(locIndx,:,i,j,k  )
             pr(:)  = PRIM(locIndx,:,i,j,k+1)
-            prr(:) = PRIM(locIndx,:,i,j,k+2)            
+            prr(:) = PRIM(locIndx,:,i,j,k+2)
             call swapxz (pll)
             call swapxz (pl)
             call swapxz (pr)
             call swapxz (prr)
-            call limiter (pll,pl,pr,prr,limiter_type,neqtot)            
+            call limiter (pll,pl,pr,prr,limiter_type,neqtot)
             call primfhllc (pl, pr, ff)
             call swapxz (ff)
             HC(:,i,j,k) = ff(:)
-         
+
           end if
-          
+
         end do
       end do
     end do
-    
+
   end select
-  
+
 end subroutine HLLCfluxes
 
 !===============================================================================
@@ -195,20 +209,21 @@ end subroutine HLLCfluxes
 subroutine primfhllc (pL, pR, ff)
 
   use parameters
+  use hydro_core, only : prim2fluxes, prim2flow
 !  use globals, only: rank
   implicit none
-  
+
   real, intent(in) :: pL(neqtot)
   real, intent(in) :: pR(neqtot)
   real, intent(out) :: ff(neqtot)
-  
+
   real :: sl, sr, sst, rhost, EL, ER
   real :: ustl(neqtot), ustr(neqtot)
   real :: uL(neqtot), uR(neqtot)
   real :: fL(neqtot), fR(neqtot)
 
   ! Calculate wavespeeds
-  call wavespeed (pL, pR, sl, sr, sst)
+  call wavespeedHLLC (pL, pR, sl, sr, sst)
 
 ! DEBUG
 !if (rank.eq.master)  write(*,*) "sl,sr=", sl, sr
@@ -226,7 +241,7 @@ subroutine primfhllc (pL, pR, ff)
   else if (sr.lt.0) then
 
 !    write(*,*) "sr<0"
-    call prim2fluxes (pR, DIM_X, fR)  
+    call prim2fluxes (pR, DIM_X, fR)
     ff(:) = fR(:)
     return
 
@@ -250,7 +265,7 @@ subroutine primfhllc (pL, pR, ff)
 
     ff(:) = fL + sl*(ustl(:)-uL(:))
     return
-      
+
   else if (sst.le.0) then
 
 !    write(*,*) "sst<0"
@@ -268,18 +283,78 @@ subroutine primfhllc (pL, pR, ff)
     if (npassive.ge.1) then
       ustr(6:neqtot) = rhost*pR(6:neqtot)/pR(1)
     end if
-    
+
     ff(:) = fR + sr*(ustr(:)-uR(:))
     return
-  
+
   else
 
 !    write(*,'(a)') "Error in primfhllc routine!"
 !    write(*,'(a)') "***ABORTING***"
 !    call clean_abort(0)
-  
+
   end if
 
 end subroutine primfhllc
 
 !===============================================================================
+
+!> @brief Obtains wavespeed estimates given primitives at interface
+!> @details Computes wavespeed estimates for the two outer shock waves and the
+!! contact discontinuity (if needed) in the Riemann fan. This routine employs
+!! the x-component of speed.
+!> @param dl Density at "left" of interface
+!> @param dr Density at "right" of interface
+!> @param ul Velocity at "left" of interface
+!> @param ur Velocity at "right" of interface
+!> @param pl Pressure at "left" of interface
+!> @param pr Pressure at "right" of interface
+!> @param sl Wavespeed estimate for "left" moving wave
+!> @param sr Wavespeed estimate for "right" moving wave
+!> @param sst Wavespeed estimate for contact discontinuity
+subroutine wavespeedHLLC (primL, primR, sl, sr, sst)
+
+  use parameters
+  use hydro_core, only : sound
+  implicit none
+
+  real, intent(in) :: primL(neqtot)
+  real, intent(in) :: primR(neqtot)
+  real, intent(out) :: sl
+  real, intent(out) :: sr
+  real, intent(out) :: sst
+
+  real :: dl1, ul1, pl1, cl
+  real :: dr1, ur1, pr1, cr
+
+  ! Unpack primitives
+  dl1 = primL(1)
+  dr1 = primR(1)
+  ul1 = primL(2)
+  ur1 = primR(2)
+  pl1 = primL(5)
+  pr1 = primR(5)
+
+  ! Sound speeds
+  call sound (primL,cl)
+  call sound (primR,cr)
+
+  ! Compute SL and SR
+  ! Davis direct bounded, 10.38 of Toro
+  sl = min( ul1-cl, ur1-cr )
+  sr = max( ul1+cl, ur1+cr )
+
+  ! Compute S* (HLLC only)
+  if (solver_type.eq.SOLVER_HLLC) then
+    sst = (pr1-pl1 + dl1*ul1*(sl-ul1) - dr1*ur1*(sr-ur1)) / &
+          (dl1*(sl-ul1)-dr1*(sr-ur1))
+  else
+    sst = 0.0
+  end if
+
+  return
+
+end subroutine wavespeedHLLC
+!===============================================================================
+
+end module HLLC
