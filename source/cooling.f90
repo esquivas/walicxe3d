@@ -23,6 +23,16 @@
 
 !===============================================================================
 
+!> @brief Module for inclussion of cooling by radiative losses
+
+module coolingModule
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief High-level wrapper subroutine for radiative cooling
 subroutine cooling
 
@@ -33,8 +43,8 @@ subroutine cooling
 
   integer :: mark, nb, bID
   real :: maxloss
- 
-  if (cooling_type.ne.COOL_NONE) then 
+
+  if (cooling_type.ne.COOL_NONE) then
 
     call tic(mark)
     write(logu,*) ""
@@ -89,6 +99,7 @@ subroutine loadcooldata ()
 
   use parameters
   use globals
+  use clean_quit, only : clean_abort
   implicit none
 
   integer :: i, istat
@@ -132,7 +143,7 @@ subroutine loadcooldata ()
   ! Note that the temperatures are logarithmic
   cool_Tmin = cooltable(1,1)
   cool_Tmax = cooltable(1,nptsT)
- 
+
 end subroutine loadcooldata
 
 !===============================================================================
@@ -156,6 +167,7 @@ subroutine loadcooldata_metal ()
 
   use parameters
   use globals
+  use clean_quit, only : clean_abort
   implicit none
 
   integer :: i, istat
@@ -182,20 +194,20 @@ subroutine loadcooldata_metal ()
       call clean_abort (ERROR_COOLING_LOAD_COEFS)
     end if
     allocate( cooltable(nptsT+1, nptsZ+1) )
-    
+
     cooltable(1,1) = -1.0
     read(99,*) cooltable(1,2:)
     do i=2,nptsT+1
       read(99,*) cooltable(i,:)
     end do
-    
+
     close(unit=99)
 
   end if
 
   ! Broadcast cooling data too all processes
   call mpi_bcast(nptsT, 1, mpi_integer, 0, mpi_comm_world, ierr)
-  call mpi_bcast(nptsZ, 1, mpi_integer, 0, mpi_comm_world, ierr)  
+  call mpi_bcast(nptsZ, 1, mpi_integer, 0, mpi_comm_world, ierr)
   if (rank.ne.master) then
     write (logu,'(2x,a)') "Receiving cooling data from master process ..."
     allocate ( cooltable(nptsT+1,nptsZ+1) )
@@ -212,7 +224,7 @@ subroutine loadcooldata_metal ()
   cool_Tmax = cooltable(nptsT+1,1)
   cool_Zmin = cooltable(1,2)
   cool_Zmax = cooltable(1,nptsZ+1)
-  
+
 end subroutine loadcooldata_metal
 
 !===============================================================================
@@ -237,11 +249,12 @@ subroutine apply_cooling (bIndx, maxloss)
 
   use parameters
   use globals
+  use hydro_core, only : calcTemp
   implicit none
 
   integer, intent(in) :: bIndx
   real, intent(out) :: maxloss
-  
+
   real, parameter :: T_floor = 10.0
 
   real :: temp, new_temp, logT, vel2, ETH, EK, aloss, numdens, ce, cool_factor
@@ -307,7 +320,7 @@ subroutine apply_cooling (bIndx, maxloss)
             cool_factor = T_floor / temp
           end if
 
-          ! Update pressure and total energy          
+          ! Update pressure and total energy
           PRIM(bIndx,5,i,j,k) = PRIM(bIndx,5,i,j,k) * cool_factor
           ETH = CV * PRIM(bIndx,5,i,j,k)
           U(bIndx,5,i,j,k) = EK + ETH
@@ -345,12 +358,12 @@ subroutine find_coef (logT, coef)
     ! Above Tmax, we assume the coefficient is proportional to sqrt(T)
     ! (corresponding to the free-free regime)
     else if (logT.ge.cool_Tmax) then
-    
+
 !      coef = cooltable(2,nptsT)*sqrt(real(T)/cool_Tmax)
       coef = 10**( cooltable(2,nptsT) + 0.5*(logT-cool_Tmax) )
       return
 
-    ! For T in range of the table, we do linear interpolation    
+    ! For T in range of the table, we do linear interpolation
     else
 
       do i=2,nptsT
@@ -363,14 +376,14 @@ subroutine find_coef (logT, coef)
           return
         end if
       end do
-      
+
     end if
 
   end subroutine find_coef
 
 !===============================================================================
 
-!> @brief Interpolates a cooling cofficient from 2D temperature-metallicity 
+!> @brief Interpolates a cooling cofficient from 2D temperature-metallicity
 !! tabulated data
 !> @param logT Base-10 logarithm of temperature (Kelvin)
 !> @param Z Metallicity (fraction of metals)
@@ -399,7 +412,7 @@ subroutine find_coef_metal (logT, Z, coef)
       coef = 0.0
       return
     end if
-    
+
     ! Find the T and Z brackets in which the given values are located
     if (logT.le.cool_Tmax) then
       ! Binary search
@@ -442,16 +455,16 @@ subroutine find_coef_metal (logT, Z, coef)
       Z0 = cooltable(1,Zlo)
       Z1 = cooltable(1,Zhi)
     end if
-    
+
     ! Above Tmax, we assume the coefficient is proportional to sqrt(T),
     ! but still linearly interpolate/extrapolate over Z
     if (logT.ge.cool_Tmax) then
-    
+
       C0 = cooltable(nptsT,Zlo) + 0.5*(logT-cool_Tmax)
       C1 = cooltable(nptsT,Zhi) + 0.5*(logT-cool_Tmax)
       coef = 10**( (C1-C0)/(Z1-Z0)*(Z-Z0) + C0 )
-      return 
-    
+      return
+
     ! For T in range, we do bilinear interpolation over T and Z
     else
 
@@ -463,8 +476,9 @@ subroutine find_coef_metal (logT, Z, coef)
              TC*ZC*cooltable(Thi,Zhi)
       coef = 10**coef
       return
-      
+
     end if
 
   end subroutine find_coef_metal
 
+end module coolingModule
