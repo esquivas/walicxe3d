@@ -29,7 +29,7 @@
 
 module load_balance
 
-  use adaptive_mesh, only : doBalance
+  use amr, only : doBalance
   implicit none
 
 contains
