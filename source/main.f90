@@ -31,14 +31,18 @@
 !! boundary conditions calculation, parallel load balancing.
 program Walicxe3D
 
-  use parameters   ! Code parameters
-  use globals      ! Runtime global variables
-  use tictoc,       only : tic, nicetoc, stamp       ! Time-measuring library
+  use parameters    ! Code parameters
+  use globals       ! Runtime global variables
+  use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
+  use clean_quit,    only  : deinit
   use init
-  use hydro_core,   only : updatePrims
-  use amr,          only : admesh
-  use load_balance, only : loadBalance
-  use output,       only : writeOutput
+  use hydro_core,    only : updatePrims
+  use amr,           only : admesh
+  use load_balance,  only : loadBalance
+  use output,        only : writeOutput
+  use hydro_solver,  only : hydroSolver
+  use coolingModule, only : cooling
+  use report,        only : main_report
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
@@ -81,13 +85,13 @@ program Walicxe3D
     write(logu,'(a)') "================================================================================"
 
     ! Hydro Solver
-    !call hydroSolver ()
+    call hydroSolver ()
 
     ! Update primitives in all blocks
     call updatePrims ()
 
     ! Radiative cooling
-    !call cooling ()
+    call cooling ()
 
     ! Update AMR grid
     call admesh ()
@@ -102,7 +106,7 @@ program Walicxe3D
     end if
 
     ! Report progress
-    !call main_report ()
+    call main_report ()
 
     ! Everyone stop here
     call mpi_barrier (mpi_comm_world, ierr)
@@ -115,6 +119,6 @@ program Walicxe3D
   write(logu,'(a)') STAMP()
   write(logu,'(a)') 'Execution complete!'
   write(logu,'(a,a)') 'Total elapsed time: ', nicetoc(start_mark)
-!  call deinit()
+  call deinit()
 
 end program Walicxe3D
