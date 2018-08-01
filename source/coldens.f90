@@ -27,6 +27,7 @@
 !> @details Version 2.0
 program coldens
 
+
   implicit none
 
   ! Named constants -- don't modify
@@ -52,7 +53,7 @@ program coldens
   real, parameter :: AMU = 1.660539E-24
   real, parameter :: KB  = 1.380658E-16
   real, parameter :: PI  = 3.141593
-  
+
   ! ============================================================================
   ! PROGRAM CONFIGURATION
   ! ============================================================================
@@ -84,7 +85,7 @@ program coldens
   ! The rot_axis parameters must be one of the constants
   !   AXIS_X, AXIS_Y, AXIS_Z or AXIS_NONE (if no rotation is wanted)
   ! Positive rotation angles around a given axis are *counter-clockwise*
-  ! when the arrow end of that axis points at the observer. 
+  ! when the arrow end of that axis points at the observer.
   ! The scene is always projected along the Z-axis, with the tip of that
   ! axis pointed towards the observer, the +x axis pointing right, and
   ! the +y axis pointing up. All rotations are performed around these
@@ -93,7 +94,7 @@ program coldens
   !        y
   !        ^
   !        |   Plane of the sky
-  !        |                                
+  !        |
   !        #----- > x
   !       /
   !      /
@@ -194,7 +195,7 @@ program coldens
   real, parameter :: deltaS = 0.0
 
   integer, parameter :: accel = ACCEL_PAR
-  
+
   ! ============================================================================
   !                    NO NEED TO MODIFY BELOW THIS POINT
   ! ============================================================================
@@ -208,16 +209,16 @@ program coldens
   real :: a, b, c, sigma, Kfact, prog, sumvalue
   real :: dx(maxlev), pvars(neqtot), uvars(neqtot)
   real :: line_of_sight(3)
-  character(256) :: filename  
+  character(256) :: filename
 
   real, allocatable :: block(:,:,:,:)
   real, allocatable :: prim(:,:,:,:)
   real, allocatable :: prim_old(:,:,:,:)
   real, allocatable :: outmap(:,:)
-  real, allocatable :: xraytable(:,:)  
+  real, allocatable :: xraytable(:,:)
 
   ! ====================================================
-  
+
   write(*,*) "Allocating data arrays ..."
 
   ! Allocate output map
@@ -235,7 +236,7 @@ program coldens
     allocate( prim(neqtot,totcells_x,totcells_y,totcells_z) )
     prim(:,:,:,:) = 0.0
     write(*,'(1x,a,f6.1,a)') "prim: ", sizeof(prim)/1024./1024., " MB"
-    
+
     ! Second data array (for previous output) for synchrotron emission
     if (int_type.eq.INT_SYNC) then
       allocate( prim_old(neqtot,totcells_x,totcells_y,totcells_z) )
@@ -364,7 +365,7 @@ subroutine processAll ()
   if (int_type.eq.INT_SYNC) then
     prim_old(:,:,:,:) = 0.0
   end if
-  
+
   ! Load data
   call readbin (nout,.false.,prim,neqtot,totcells_x,totcells_y,totcells_z)
   write(*,*) "Density:", minval(prim(1,:,:,:)), maxval(prim(1,:,:,:))
@@ -420,7 +421,7 @@ subroutine processAll ()
 
         ! Project this cell's value onto 2D output map
         call projectCell (sumvalue, i, j, k)
-       
+
         ! Progress report
         counter = counter + 1
         prog = counter*1.0/(totcells_x*totcells_y*totcells_z)
@@ -477,7 +478,7 @@ subroutine processByBlock ()
       close(unitin)
       stop
     end if
-    
+
     ! Read file header
     blocksread = 0
     read(unitin) nblocks
@@ -493,7 +494,7 @@ subroutine processByBlock ()
       blocksread = blocksread + 1
 !      write(*,'(i0,a)',advance='no') bID, " ... "
       !write(*,*) minval(block(1,:,:,:)), maxval(block(1,:,:,:))
-      
+
       call meshlevel (bID, mesh, ilev)
       call bcoords(bID, mesh, bx, by, bz)
 
@@ -653,7 +654,7 @@ subroutine readbin (nout,use_alt,prim,neq,nx,ny,nz)
                 end do
               end do
             end do
-            
+
           end do
         end do
       end do
@@ -714,7 +715,7 @@ subroutine projectCell (cellvalue, i, j, k)
   ! Distribute value among 4 map cells using weights
   do ii=0,1
     do jj=0,1
-    
+
       i2 = im + ii*off_x
       j2 = jm + jj*off_y
 
@@ -727,7 +728,7 @@ subroutine projectCell (cellvalue, i, j, k)
         weight = a*b
         outmap(i2,j2) = outmap(i2,j2) + weight*cellvalue
       end if
-      
+
     end do
   end do
 
@@ -741,7 +742,7 @@ subroutine computeLOS (los)
 
   real, intent(out) :: los(3)
 
-  real :: x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4 
+  real :: x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4
 
   ! Rotate z unit vector
   call rotatePoint (0.0, 0.0, 1.0, rot1_axis, rot1_angle, x1, y1, z1)
@@ -898,7 +899,7 @@ subroutine flow2prim (uvars, pvars)
   end if
 
   return
-  
+
 end subroutine flow2prim
 
 !===============================================================================
@@ -1003,7 +1004,7 @@ subroutine calc_sigma (prim,prim_old,alpha,deltaS,los,sigma)
   S_new = pres*dens**mgam
   S_old = pres_old*dens_old**mgam
   delta = abs((S_new-S_old)/S_old)
- 
+
   ! Compute sigma only when entropy change is large enough
   if (delta.gt.deltaS) then
 
@@ -1029,9 +1030,9 @@ subroutine calc_sigma (prim,prim_old,alpha,deltaS,los,sigma)
     sigma = (dens**al1)*(pres**al2)*(B*sinpsi)**al3
 
   else
-  
+
     sigma = 0.0
-    
+
   end if
 
 end subroutine calc_sigma
@@ -1054,7 +1055,7 @@ subroutine calc_K (prim, neq, nx, ny, nz, i, j, k, dx, accel, Kfact)
   real, intent(in) :: dx
   integer, intent(in) :: accel
   real, intent(out) :: Kfact
-  
+
   real :: gradpx, gradpy, gradpz, gradp2, bx, by, bz, b2, bdotgradp
   real :: c2phibn, c2phibs
 
@@ -1073,7 +1074,7 @@ subroutine calc_K (prim, neq, nx, ny, nz, i, j, k, dx, accel, Kfact)
   b2 = bx**2 + by**2 + bz**2
   gradp2 = gradpx**2 + gradpy**2 + gradpz**2
   bdotgradp = bx*gradpx + by*gradpy + bz*gradpz
-  
+
   if ((b2.lt.1E-60).or.(gradp2.lt.1E-60)) then
     c2phibn = 0.0
   else
@@ -1087,7 +1088,7 @@ subroutine calc_K (prim, neq, nx, ny, nz, i, j, k, dx, accel, Kfact)
   !   K = cos^2(phibs) ... (quasi-parallel)
   !   K = sin^2(phibs) ... (quasi-perpendicular)
   ! where
-  !   cos^2(phibs) = cos^2(phibn)/(16-15*cos^2(phibn)),          
+  !   cos^2(phibs) = cos^2(phibn)/(16-15*cos^2(phibn)),
   ! according to particle acceleration method.
 
   c2phibs = c2phibn/(16-15*c2phibn)
@@ -1152,6 +1153,7 @@ end subroutine writerg
 
 subroutine genfname (rank, nout, dir, template, ext, filename)
 
+  use utils, only : replace
   implicit none
   integer, intent(in) :: rank
   integer, intent(in) :: nout
@@ -1198,7 +1200,7 @@ end subroutine genfname
 subroutine transform (x, y, z, xp, yp, zp)
 
   implicit none
-  
+
   real, intent(in) :: x, y, z
   real, intent(out) :: xp, yp, zp
 
