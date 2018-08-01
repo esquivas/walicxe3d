@@ -23,12 +23,23 @@
 
 !===============================================================================
 
+!> @brief Module to print out the "main" progress report (after each iteration)
+
+module report
+
+  implicit none
+
+contains
+
+!===============================================================================
+
 !> @brief Prints out the "main" progress report (after each iteration)
 subroutine main_report ()
 
   use parameters
   use globals
   use tictoc
+  use utils, only : nicetime
   implicit none
 
   character(30) :: timestr, dtstr
@@ -52,3 +63,7 @@ subroutine main_report ()
   call flush(logu)
 
 end subroutine main_report
+
+!===============================================================================
+
+end module report
