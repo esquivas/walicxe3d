@@ -24,6 +24,17 @@
 
 !===============================================================================
 
+!> @brief Boundaries module
+!> @details The module contains the subroutines and utilities to pass the
+!> set up boundary conditions
+
+module boundaries
+
+  implicit none
+
+contains
+!===============================================================================
+
 !> @brief High-level wrapper routine for boundary conditions
 !> @details This is a wrapper routine that calls the two boundary-passing
 !! routines: normalBoundary, which applies standard boundary conditions,
@@ -41,7 +52,7 @@ subroutine boundary (depth, uvars)
   integer, intent(in) :: depth
   real, intent(inout) :: uvars(nbMaxProc, neqtot, &
                          nxmin:nxmax, nymin:nymax, nzmin:nzmax)
-  
+
   ! Apply standard boundary conditions on ghost cells
   call normalBoundary (depth, uvars)
   call mpi_barrier (mpi_comm_world, ierr)  ! This barrier might not be needed
@@ -65,6 +76,8 @@ subroutine normalBoundary (depth, uvars)
   use globals
   use parameters
   use tictoc
+  use utils, only: find
+  use amr,  only : getOwner, neighbors, siblingCoords
   implicit none
 
   integer, intent(in) :: depth
@@ -96,19 +109,19 @@ subroutine normalBoundary (depth, uvars)
       if (verbose) write(logu,'(1x,a)') "Step 1: setting LEFT ghost cells"
     case (2)
       direction = RIGHT
-      if (verbose) write(logu,'(1x,a)') "Step 2: setting RIGHT ghost cells"      
+      if (verbose) write(logu,'(1x,a)') "Step 2: setting RIGHT ghost cells"
     case (3)
       direction = FRONT
-      if (verbose) write(logu,'(1x,a)') "Step 3: setting FRONT ghost cells"      
+      if (verbose) write(logu,'(1x,a)') "Step 3: setting FRONT ghost cells"
     case (4)
       direction = BACK
-      if (verbose) write(logu,'(1x,a)') "Step 4: setting BACK ghost cells"      
+      if (verbose) write(logu,'(1x,a)') "Step 4: setting BACK ghost cells"
     case (5)
       direction = BOTTOM
       if (verbose) write(logu,'(1x,a)') "Step 5: setting BOTTOM ghost cells"
     case (6)
       direction = TOP
-      if (verbose) write(logu,'(1x,a)') "Step 6: setting TOP ghost cells"      
+      if (verbose) write(logu,'(1x,a)') "Step 6: setting TOP ghost cells"
     end select
 
     ! For every active block ...
@@ -126,7 +139,7 @@ subroutine normalBoundary (depth, uvars)
 
         if (verbose) then
           write(logu,*) ""
-          write(logu,'(a,i8)') "Destination block: ", destID       
+          write(logu,'(a,i8)') "Destination block: ", destID
           write(logu,'(1x,a,i4)') "Current owner: ", destOwner
           write(logu,'(1x,a,i2)') "Neighbor Type: ", ntype
           write(logu,*) "Neighbor(s): ", neighs
@@ -136,18 +149,18 @@ subroutine normalBoundary (depth, uvars)
         ! Sender-side operations !
         !  (MPI operations only) !
         ! ====================== !
-        
+
         if (destOwner.ne.rank) then
           ! Only checked when destination block is *not* local
           !
           ! If it is, this rank will never send boundary cells through MPI
           ! (nonlocal neighbor data will get sent by someone else, and local
           ! neighbor data is copied from local memory)
-          
+
           ! =================================
 
-          ! Boundary to same-level block       
-          
+          ! Boundary to same-level block
+
           if (ntype.eq.NEIGH_SAME) then
             srcID = neighs(1)
             call getOwner (srcID, srcOwner)
@@ -177,16 +190,16 @@ subroutine normalBoundary (depth, uvars)
 
             end if
           end if
-          
+
           ! =================================
 
           ! Boundary to finer block (source is coarser than destination)
-          
+
           if (ntype.eq.NEIGH_COARSER) then
             srcID = neighs(1)
             call getOwner (srcID, srcOwner)
             if (srcOwner.eq.rank) then
-            
+
               ! Send one quarter of boundary layer through MPI
 
               call opposite (direction, src_face)
@@ -217,14 +230,14 @@ subroutine normalBoundary (depth, uvars)
 
           ! Boundary to coarser block (source is finer than destination)
           ! Will send up to 4 block boundaries
-          
+
           if (ntype.eq.NEIGH_FINER) then
-          
-            do b=1,4 
+
+            do b=1,4
               srcID = neighs(b)
               call getOwner (srcID, srcOwner)
               if (srcOwner.eq.rank) then
-              
+
                 ! Average groups of eight cells into buffer before sending
 
                 call opposite (direction, src_face)
@@ -265,7 +278,7 @@ subroutine normalBoundary (depth, uvars)
                 end do
 
               ! Now send averaged cells in buffer through MPI
-              
+
               nData = ((i2-i1+1)/2)*((j2-j1+1)/2)*((k2-k1+1)/2)*neqtot
               select case (direction)
               case (LEFT, RIGHT)
@@ -295,7 +308,7 @@ subroutine normalBoundary (depth, uvars)
 
               end if
             end do
-            
+
           end if
 
           ! No SENDER-side operations involved in ntype=NEIGH_BOUNDARY
@@ -314,7 +327,7 @@ subroutine normalBoundary (depth, uvars)
           ! =================================
 
           ! Boundary from same-level block
-          
+
           if (ntype.eq.NEIGH_SAME) then
 
             srcID = neighs(1)
@@ -338,9 +351,9 @@ subroutine normalBoundary (depth, uvars)
               end if
 
             else
-            
+
               ! NONLOCAL boundary; ghost cells are received one-to-one through MPI
-              
+
               nData = (i2-i1+1)*(j2-j1+1)*(k2-k1+1)*neqtot
               call MPI_RECV ( uvars(destInd, 1:neqtot, i1:i2, j1:j2, k1:k2), nData, &
                 mpi_real_kind, srcOwner, srcID, mpi_comm_world, mpistatus, ierr)
@@ -352,13 +365,13 @@ subroutine normalBoundary (depth, uvars)
               end if
 
             end if
-            
+
           end if
-          
+
           ! =================================
-          
+
           ! Boundary from coarser block (source is coarser than destination)
-          
+
           if (ntype.eq.NEIGH_COARSER) then
 
             srcID = neighs(1)
@@ -369,7 +382,7 @@ subroutine normalBoundary (depth, uvars)
             if (srcOwner.eq.rank) then
 
               ! LOCAL boundary; ghost cells are calculated with duplicated data
-              
+
               call siblingCoords (destID, sx, sy, sz)
               call find (srcID, localBlocks, nbMaxProc, srcInd)
               do ieq=1,neqtot
@@ -476,7 +489,7 @@ subroutine normalBoundary (depth, uvars)
           ! =================================
 
           ! Boundary from four finer blocks (source is finer than destination)
-          
+
           if (ntype.eq.NEIGH_FINER) then
 
             ! Set all ghost cells to zero
@@ -485,15 +498,15 @@ subroutine normalBoundary (depth, uvars)
             uvars(destInd,:,i1:i2,j1:j2,k1:k2) = 0.0
 
             ! For each of the four neighbor blocks ...
-            do b=1,4 
+            do b=1,4
 
               srcID = neighs(b)
               call getOwner (srcID, srcOwner)
-              
+
               if (srcOwner.eq.rank) then
 
                 ! LOCAL boundary: SRC boundary cells are averaged into DEST ghost cells
-                
+
                 call siblingCoords (srcID, sx, sy, sz)
                 call opposite (direction, src_face)
                 depth1 = depth*2
@@ -525,14 +538,14 @@ subroutine normalBoundary (depth, uvars)
                       end do
                     end do
                   end do
-                end do                
+                end do
 
                 if (verbose) then
                   write(logu,'(1x,i8,a,i3,i3,i3,i3,i3,i3,a)') srcID, &
                   " is local too: averaging SRC boundary layer ", i3,i4,j3,j4,k3,k4, &
                   " into DEST ghost layer"
                 end if
-                
+
               else
 
                 ! NONLOCAL boundary; pre-averaged ghost cells received directly into DEST quadrant
@@ -548,11 +561,11 @@ subroutine normalBoundary (depth, uvars)
                   " is owned by rank ", srcOwner, " : receiving MPI data (", nData, &
                   " values) into boundary layer ", i1,i2,j1,j2,k1,k2
                 end if
-  
+
               end if
-          
+
             end do
-            
+
           end if
 
           ! =================================
@@ -578,7 +591,7 @@ subroutine normalBoundary (depth, uvars)
             write(logu,*) "INVALID BC TYPE=", bc_type
             exit
           end select
-          
+
           if ((ntype.eq.NEIGH_BOUNDARY).and.(bc_type.ne.BC_PERIODIC)) then
 
             if (verbose) write(logu,'(1x,a)') "Computional domain boundary: calculating locally"
@@ -593,7 +606,7 @@ subroutine normalBoundary (depth, uvars)
 
                   ! Reflective (one component of velocity flips sign)
                   if (bc_type.eq.BC_REFLECTIVE) then
-                  
+
                     ip = i
                     jp = j
                     kp = k
@@ -650,14 +663,14 @@ subroutine normalBoundary (depth, uvars)
                   ! Periodic BCs
                   ! These are handled by the neighbors function, which
                   ! returns the correct neighbor in this case
-                  
+
                   end if
 
 
                 end do
               end do
             end do
-            
+
           end if
 
           ! =================================
@@ -666,9 +679,9 @@ subroutine normalBoundary (depth, uvars)
 
       if (verbose) write(logu,'(a,i8)') "Done with block", destID
 
-      end if     
+      end if
     end do
-    
+
   end do
 
 end subroutine normalBoundary
@@ -735,7 +748,7 @@ subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax)
       jmax = jmax - depth
     case (BACK)
       jmin = jmin + depth
-      jmax = jmax + depth      
+      jmax = jmax + depth
     case (BOTTOM)
       kmin = kmin - depth
       kmax = kmax - depth
@@ -746,7 +759,7 @@ subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax)
       ! Should abort execution
     end select
   end if
-  
+
   return
 
 end subroutine layerLimits
@@ -808,7 +821,7 @@ subroutine quadrantLimits (face, depth, ghost, sx, sy, sz, imin, imax, jmin, jma
   case default
     ! Should abort execution
   end select
-  
+
   ! If these are ghost cells, shift them accordingly
   if (ghost) then
     select case (face)
@@ -823,7 +836,7 @@ subroutine quadrantLimits (face, depth, ghost, sx, sy, sz, imin, imax, jmin, jma
       jmax = jmax - depth
     case (BACK)
       jmin = jmin + depth
-      jmax = jmax + depth      
+      jmax = jmax + depth
     case (BOTTOM)
       kmin = kmin - depth
       kmax = kmax - depth
@@ -872,3 +885,5 @@ subroutine opposite (direction, oppDir)
 end subroutine opposite
 
 !===============================================================================
+
+end module boundaries
