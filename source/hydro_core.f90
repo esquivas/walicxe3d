@@ -474,4 +474,136 @@ subroutine swapxz (vec)
 
 end subroutine swapxz
 
+!===============================================================================
+
+!> @brief Applies artificial viscosity to a block's flow variables
+!> @details Viscosity: up(n)=up(n)+eta*\nabla^2(u(n))
+!> @param bIndx Block's local index
+!> @param U Flow variables at t^n
+!> @param UP Flow variables at t^(n+1)
+subroutine viscosity (bIndx, U, UP)
+
+  use parameters
+  implicit none
+
+  integer, intent(in) :: bIndx
+  real, intent(in) :: U (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+  real, intent(inout) :: UP (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+
+  integer :: i, j, k
+
+  do i=1,ncells_x
+    do j=1,ncells_y
+      do k=1,ncells_z
+        UP(bIndx,:,i,j,k)   &
+          = UP(bIndx,:,i,j,k) + visc_eta*(   &
+          + U(bIndx,:,i+1,j,k) + U(bIndx,:,i-1,j,k)   &
+          + U(bIndx,:,i,j+1,k) + U(bIndx,:,i,j-1,k)   &
+          + U(bIndx,:,i,j,k+1) + U(bIndx,:,i,j,k-1)   &
+          - 6.0*U(bIndx,:,i,j,k) )
+      end do
+    end do
+  end do
+
+end subroutine viscosity
+
+!===============================================================================
+
+!> @brief Applies the flux limiter to average left/right states
+!> @details This routine uses the X-component of speed.
+!> @param pll Pressure two cells "left" of interface
+!> @param pl Pressure one cell "left" of interface
+!> @param prr Pressure two cells "right" of interface
+!> @param pr Pressure once cell "right" of interface
+!> @param lim Limiter to use. See parameters.f90 for supported options.
+!> @param neqs Number of equations
+subroutine limiter (pll,pl,pr,prr,lim,neqs)
+
+  implicit none
+
+  integer, intent(in) :: neqs
+  integer, intent(in) :: lim
+  real, intent(in) :: pll(neqs)
+  real, intent(in) :: prr(neqs)
+  real, intent(inout) :: pl(neqs)
+  real, intent(inout) :: pr(neqs)
+
+
+  real :: dl, dm, dr, al, ar
+  integer :: ieq
+
+  do ieq=1,neqs
+    dl = pl(ieq) - pll(ieq)
+    dm = pr(ieq) - pl(ieq)
+    dr = prr(ieq) - pr(ieq)
+    al = average(dl, dm, lim)
+    ar = average(dm, dr, lim)
+    pl(ieq) = pl(ieq) + 0.5*al
+    pr(ieq) = pr(ieq) - 0.5*ar
+  end do
+
+contains
+
+  real function average (a,b,opt)
+
+    use constants
+    implicit none
+
+    real, intent(in) :: a, b
+    integer, intent(in) :: opt
+
+    real :: s, c, d, eps
+
+    select case (opt)
+
+    case (LIMITER_NONE)
+      average = 0.5*(a+b)
+
+    case (LIMITER_VANLEER)
+      if (a*b.le.0.0) then
+        average = 0.0
+      else
+        average = a*b*(a+b)/(a*a+b*b)
+      end if
+
+    case (LIMITER_MINMOD)
+      s = sign(1.0,a)
+      average = s*max(0.0, min(abs(a), s*b))
+
+    case (LIMITER_ALBADA)   ! NOT WORKING
+      eps = 1.0e-7
+      average = (a*(b*b+eps)+b*(a*a+eps))/(a*a+b*b*eps)
+
+    case (LIMITER_UMIST)
+      s = sign(1.0,a)
+      c = 0.25*a + 0.75*b
+      d = 0.75*a + 0.25*b
+      average = min(2.0*abs(a), 2.0*s*b, s*c, s*d)
+      average = s*max(0.0, average)
+
+    case (LIMITER_WOODWARD)
+      s = sign(1.0,a)
+      c = 0.5*(a+b)
+      average = min(2.0*abs(a), 2*s*b, s*c)
+      average = s*max(0.0, average)
+
+    case (LIMITER_SUPERBEE)
+      s = sign(1.0,b)
+      c = min(2.0*abs(b), s*a)
+      d = min(abs(b),2.0*s*a)
+      average = s*max(0.0,c,d)
+
+    case default
+      average = 0.0
+      write(*,'(a)') "WARNING: no averaging in limiter!"
+      write(*,'(a,i2)') "Passed limiter value: ", opt
+
+    end select
+
+  end function average
+
+end subroutine limiter
+
+!===============================================================================
+
 end module hydro_core
