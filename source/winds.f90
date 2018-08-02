@@ -210,7 +210,7 @@ contains
                   primit(3) = vy/v_sc
                   primit(4) = vz/v_sc
                   primit(5) = pres/p_sc
-#ifdef PASBP
+#ifdef BFIELD
                   ! Magnetic field
                   primit(6) = 0.0
                   primit(7) = 0.0
