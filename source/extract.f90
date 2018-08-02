@@ -99,7 +99,7 @@ program extract
   !                    NO NEED TO MODIFY BELOW THIS POINT
   ! ============================================================================
 
-#ifdef PASBP
+#ifdef BFIELD
   integer, parameter :: npas = neqtot - 8
   integer, parameter :: firstpas = 9
 #else
@@ -656,7 +656,7 @@ subroutine write2DVTK (outmap, nx, ny, outfname)
     end do
   end if
 
-#ifdef PASBP
+#ifdef BFIELD
   ! MAGNETIC FIELD
   write(*,'(1x,a)') " Writing Magnetic Field components ..."
   write(cbuffer,'(a)') 'VECTORS B float'
