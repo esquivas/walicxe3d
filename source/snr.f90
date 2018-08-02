@@ -187,7 +187,7 @@ contains
                 primit(5) = Pres/p_sc
 
                 ! Magnetic field (if applicable)
-#ifdef PASBP
+#ifdef BFIELD
                 primit(6) = bx
                 primit(7) = by
                 primit(8) = bz
@@ -361,7 +361,7 @@ contains
                 primit(5) = pres/p_sc
 
                 ! Magnetic field (if applicable)
-#ifdef PASBP
+#ifdef BFIELD
                 primit(6) = bx
                 primit(7) = by
                 primit(8) = bz
