@@ -54,7 +54,7 @@ module parameters
   ! This will determine the number of blocks allocated by the code
   ! Note that 1 MB = 1024 kB = 1024*1024 or 2^20 bytes
   real, parameter :: RAM_per_proc = 1024
- 
+
   ! ============================================
   ! Adaptive Mesh parameters
   ! ============================================
@@ -65,17 +65,17 @@ module parameters
   real, parameter :: zphystot = 10.0 * PC      !< Physical domain size along z
 
   ! Mesh Geometry
-  
+
   !> Method used to specify mesh geometry
   ! There are currently two ways to specify the mesh geometry:
   ! 1) MESH_AUTO: the user specifies max-level resolution.
   !    This will automatically calculate the number of root blocks
-  !    and number of refinement levels 
+  !    and number of refinement levels
   ! 2) MESH_MANUAL: the user specifies the number and geometry of the
   !    root blocks and the number of refinement levels.
   !    The max-level resolution will then be given by:
   !    dx(max) = phys_size / (ncells_x*2^(maxlev-1))
-  ! In both cases, the requested grid geometry must match the aspect 
+  ! In both cases, the requested grid geometry must match the aspect
   ! ratio of the physical box dimensions.
   integer, parameter :: mesh_method = MESH_AUTO
 
@@ -118,11 +118,11 @@ module parameters
   ! twice coarseThres. Good values are 0.3 and 0.03.
   real, parameter :: refineThres = 0.3           !< Refinement threshold
   real, parameter :: coarseThres = 0.03          !< Coarsening threshold
-  
+
   ! ============================================
   ! Boundary conditions
   ! ============================================
-  
+
   ! Currently recognized options are:
   !  BC_REFLECTIVE: Reflective (velocity is reversed)
   !  BC_FREE_FLOW: Free flow (zero-gradients at boundary)
@@ -170,7 +170,7 @@ module parameters
   character(*), parameter :: gridtpl   = "Grid.YYYY"
   !> Filename template for State files
   character(*), parameter :: statetpl  = "State.YYYY"
-  
+
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
@@ -194,11 +194,11 @@ module parameters
   !!  LIMITER_MINMOD: Minmod limiter - most diffusive
   !!  LIMITER_VANLEER: van Leer limiter
   !!  LIMITER_ALBADA: van Albada limiter
-  !!  LIMITER_UMIST: UMIST limiter 
+  !!  LIMITER_UMIST: UMIST limiter
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
   integer, parameter :: limiter_type = LIMITER_VANLEER
-  
+
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
 
@@ -265,7 +265,7 @@ module parameters
 
   ! Magnetic field (only needed when passive magnetic field is enabled)
   ! All values given in gauss
-#ifdef PASBP
+#ifdef BFIELD
   real, parameter :: ism_bx = 0.0     !< ISM B_x field (G)
   real, parameter :: ism_by = 0.0     !< ISM B_y field (G)
   real, parameter :: ism_bz = 0.0     !< ISM B_z field (G)
@@ -301,7 +301,7 @@ module parameters
   integer, parameter :: neqhydro = 5
 
   !> Number of mhd equations
-#ifdef PASBP
+#ifdef BFIELD
   integer, parameter :: neqmhd = 3
 #else
   integer, parameter :: neqmhd = 0
@@ -315,8 +315,8 @@ module parameters
   !! (hydro variables + mhd variables + passive scalars)
   integer, parameter :: neqtot = neqhydro + neqmhd + npassive
 
-  !> First passive scalar index  
-  integer, parameter :: firstpas = neqhydro + neqmhd + 1 
+  !> First passive scalar index
+  integer, parameter :: firstpas = neqhydro + neqmhd + 1
 
   !> Number of bytes per real
 #ifdef DOUBLEP
@@ -330,17 +330,17 @@ module parameters
     (ncells_block+2*nghost)**3 * neqtot * bytes_per_real
 
   !> Maximum number of blocks per process
-  ! Computed automatically from the amount of RAM per process and the 
+  ! Computed automatically from the amount of RAM per process and the
   ! memory size of each block. The fudge factor in the formula below
   ! leaves a bit of headroom for the code.
   integer, parameter :: nbMaxProc = &
     int((RAM_per_proc*1024*1024 - 6*block_ram_size)*0.95/(block_ram_size*3))
- 
+
   !> Maximum number of blocks across all process
   integer, parameter :: nbMaxGlobal = nbMaxProc*nProcs
 
   !> Number of cells per block along x
-  integer, parameter :: ncells_x = ncells_block 
+  integer, parameter :: ncells_x = ncells_block
   !> Number of cells per block along y
   integer, parameter :: ncells_y = ncells_block
   !> Number of cells per block along z
@@ -368,7 +368,7 @@ module parameters
 
   !> Rank of master process
   integer, parameter :: master = 0
- 
+
   ! Derived unit scalings
   real, parameter :: p_sc = d_sc*v_sc**2
   real, parameter :: e_sc = p_sc
