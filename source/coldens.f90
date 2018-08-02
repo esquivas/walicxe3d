@@ -990,7 +990,7 @@ subroutine calc_sigma (prim,prim_old,alpha,deltaS,los,sigma)
   pres = prim(5)
   dens_old = prim_old(1)
   pres_old = prim_old(5)
-#ifdef PASBP
+#ifdef BFIELD
   Bx = prim(7)
   By = prim(8)
   Bz = prim(9)
