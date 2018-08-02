@@ -138,7 +138,7 @@ contains
 
                 ! Magnetic field (if applicable)
                 !**** scling pending ****
-#ifdef PASBP
+#ifdef BFIELD
                 primit(6) = bx
                 primit(7) = by
                 primit(8) = bz
@@ -166,7 +166,7 @@ contains
     write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velx= ", vx, " cm s^-1   (", vx/v_sc, ")"
     write(logu,'(1x,a,es12.5,a,es12.5,a)') "Vely= ", vy, " cm s^-1   (", vy/v_sc, ")"
     write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velz= ", vz, " cm s^-1   (", vz/v_sc, ")"
-#ifdef PASBP
+#ifdef BFIELD
     write(logu,'(1x,a,es12.5,a)') "Bx= ", ism_bx, " G"
     write(logu,'(1x,a,es12.5,a)') "By= ", ism_by, " G"
     write(logu,'(1x,a,es12.5,a)') "Bz= ", ism_bz, " G"
