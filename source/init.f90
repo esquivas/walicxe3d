@@ -248,7 +248,7 @@ subroutine initmain ()
   if (units_type.eq.CODE_UNITS) write(logu,'(1x,a)') "Data dumped in Code Units"
   if (units_type.eq.PHYS_UNITS) write(logu,'(1x,a)') "Data dumped in Physical Units"
 
-#ifdef PASBP
+#ifdef BFIELD
   write(logu,*) ""
   write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
 #endif
