@@ -596,7 +596,7 @@ subroutine write3DVTKBlocks (noutput)
   end do
   write(unitout) lf
 
-#ifdef PASBP
+#ifdef BFIELD
   ! Velocity
   ! DEBUG
 !  nextrep = 0.01
@@ -1012,7 +1012,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
     end do
   end do
 
-#ifdef PASBP
+#ifdef BFIELD
   ! MAGNETIC FIELD
   write(logu,'(1x,a)') " Writing Magnetic Field components ..."
   write(cbuffer,'(a)') 'VECTORS B float'
