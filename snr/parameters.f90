@@ -284,7 +284,7 @@ module parameters
   integer, parameter :: neqhydro = 5
 
   !> Number of mhd equations
-#ifdef PASBP
+#ifdef BFIELD
   integer, parameter :: neqmhd = 3
 #else
   integer, parameter :: neqmhd = 0
