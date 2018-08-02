@@ -266,7 +266,7 @@ subroutine prim2flow (pvars, uvars)
   v2 = pvars(2)**2 + pvars(3)**2 + pvars(4)**2
   uvars(5) = 0.5*pvars(1)*v2 + CV*pvars(5)
 
-#ifdef PASBP
+#ifdef BFIELD
   uvars(6) = pvars(6)
   uvars(7) = pvars(7)
   uvars(8) = pvars(8)
@@ -328,7 +328,7 @@ subroutine flow2prim (uvars, pvars, istat)
     istat = 2
   end if
 
-#ifdef PASBP
+#ifdef BFIELD
   pvars(6) = uvars(6)
   pvars(7) = uvars(7)
   pvars(8) = uvars(8)
@@ -380,7 +380,7 @@ subroutine prim2fluxes (pvars, dimens, flux)
   flux(3) = pvars1(1)*pvars1(2)*pvars1(3)
   flux(4) = pvars1(1)*pvars1(2)*pvars1(4)
   flux(5) = pvars1(2)*(etot+pvars1(5))
-#ifdef PASBP
+#ifdef BFIELD
   flux(6) = 0
   flux(7) = pvars1(2)*pvars1(7) - pvars1(3)*pvars1(6)
   flux(8) = pvars1(2)*pvars1(8) - pvars1(4)*pvars1(6)
@@ -437,7 +437,7 @@ subroutine swapxy (vec)
   vec(2) = vec(3)
   vec(3) = temp
 
-#ifdef PASBP
+#ifdef BFIELD
   temp = vec(6)
   vec(6) = vec(7)
   vec(7) = temp
@@ -464,7 +464,7 @@ subroutine swapxz (vec)
   vec(2) = vec(4)
   vec(4) = temp
 
-#ifdef PASBP
+#ifdef BFIELD
   temp = vec(6)
   vec(6) = vec(8)
   vec(8) = temp
