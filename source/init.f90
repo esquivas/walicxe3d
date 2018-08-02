@@ -495,6 +495,8 @@ subroutine initflow ()
 
   write(logu,*) ""
   write(logu,'(1x,a)') "> Done setting ICs"
+  write(logu,*) ""
+  write(logu,'(1x,a)') "... and now for something completely different ..."
 
 end subroutine initflow
 
