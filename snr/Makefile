@@ -36,8 +36,8 @@ MPI= Y
 # Use double precision for all real variables?
 DOUBLEP= Y
 
-# Enable passive magnetic field?
-PASB= N
+# Enable passive magnetic (passive *or* active)
+BFIELD N
 
 # ==============================================================================
 
@@ -112,8 +112,8 @@ endif
 endif
 
 # MPI
-ifeq ($(PASB),Y)
-CFLAGS += -DPASBP
+ifeq ($(BFIELD),Y)
+CFLAGS += -DBFIELD
 endif
 
 # Set mpif90 as compiler if MPI, otherwise use specified
