@@ -249,8 +249,13 @@ subroutine initmain ()
   if (units_type.eq.PHYS_UNITS) write(logu,'(1x,a)') "Data dumped in Physical Units"
 
 #ifdef BFIELD
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
+  if ( mhd ) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Active magnetic field ENABLED (MHD)"
+  else
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
+  end if
 #endif
 
   write(logu,*) ""
@@ -610,6 +615,7 @@ subroutine basegrid ()
   use parameters
   use globals
   use tictoc
+  use clean_quit, only : clean_abort
   use amr, only : syncBlockLists
   implicit none
 
