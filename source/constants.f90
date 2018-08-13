@@ -80,6 +80,8 @@ module constants
   integer, parameter :: SOLVER_HLL1 = 2    !< First-order HLL Riemann solver
   integer, parameter :: SOLVER_HLL  = 3    !< Full (2nd-order) HLL Riemann solver
   integer, parameter :: SOLVER_HLLC = 4    !< HLLC Riemann solver
+  integer, parameter :: SOLVER_HLLE = 5    !< HLLE Riemann solver
+  integer, parameter :: SOLVER_HLLD = 6    !< HLLD Riemann solver
 
   ! Slope limiters
   integer, parameter :: LIMITER_NONE     = 0     !< No slope limiter
