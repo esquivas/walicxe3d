@@ -65,7 +65,7 @@ module uniformISM
     real :: vx
     real :: vy
     real :: vz
-#ifdef PASB
+#ifdef BFIELD
     real :: bx = 0.
     real :: by = 0.
     real :: bz = 0.
@@ -95,7 +95,7 @@ contains
 
     integer :: nb, bID, i, j, k
     real    :: dens, pres, temp, vx, vy, vz, mu, metal
-#ifdef PASB
+#ifdef BFIELD
     real    :: bx, by, bz
 #endif
     real    :: primit(neqtot), flowvars(neqtot)
@@ -109,7 +109,7 @@ contains
     vx    = ism_params%vx
     vy    = ism_params%vy
     vz    = ism_params%vz
-#ifdef PASB
+#ifdef BFIELD
     bx    = ism_params%bx
     by    = ism_params%by
     bz    = ism_params%bz
@@ -167,9 +167,9 @@ contains
     write(logu,'(1x,a,es12.5,a,es12.5,a)') "Vely= ", vy, " cm s^-1   (", vy/v_sc, ")"
     write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velz= ", vz, " cm s^-1   (", vz/v_sc, ")"
 #ifdef BFIELD
-    write(logu,'(1x,a,es12.5,a)') "Bx= ", ism_bx, " G"
-    write(logu,'(1x,a,es12.5,a)') "By= ", ism_by, " G"
-    write(logu,'(1x,a,es12.5,a)') "Bz= ", ism_bz, " G"
+    write(logu,'(1x,a,es12.5,a)') "Bx= ", bx, " G"
+    write(logu,'(1x,a,es12.5,a)') "By= ", by, " G"
+    write(logu,'(1x,a,es12.5,a)') "Bz= ", bz, " G"
 #endif
 
 end subroutine impose_uniform_ism
