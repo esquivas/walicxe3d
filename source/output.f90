@@ -613,9 +613,9 @@ subroutine write3DVTKBlocks (noutput)
         do j=1,ncells_y
           do i=1,ncells_x
             if (units_type.eq.PHYS_UNITS) then
-              xx = PRIM(nb,6,i,j,k)*v_sc
-              yy = PRIM(nb,7,i,j,k)*v_sc
-              zz = PRIM(nb,8,i,j,k)*v_sc
+              xx = PRIM(nb,6,i,j,k)*b_sc
+              yy = PRIM(nb,7,i,j,k)*b_sc
+              zz = PRIM(nb,8,i,j,k)*b_sc
             elseif (units_type.eq.CODE_UNITS) then
               xx = PRIM(nb,6,i,j,k)
               yy = PRIM(nb,7,i,j,k)
