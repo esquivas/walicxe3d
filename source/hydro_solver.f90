@@ -119,7 +119,7 @@ subroutine getTimestep (dt_glob)
 
   use parameters
   use globals
-  use hydro_core, only : sound
+  use hydro_core, only : sound, cfast
   use amr,        only : meshlevel
   implicit none
 
@@ -127,11 +127,14 @@ subroutine getTimestep (dt_glob)
 
   integer :: nb, bID, i, j, k, ilev
   real :: cs, dt_hydro, dt_cool, dt_loc
+#ifdef BFIELD
+  real :: cfx, cfy, cfz
+#endif
 
-  dt_loc = 1.0e30
-  dt_glob = 1.0e30
+  dt_loc   = 1.0e30
+  dt_glob  = 1.0e30
   dt_hydro = 1.0e30
-  dt_cool = 1.0e30
+  dt_cool  = 1.0e30
 
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
@@ -143,13 +146,21 @@ subroutine getTimestep (dt_glob)
         do j=1,ncells_y
           do k=1,ncells_z
 
-            ! Hydrodynamical timestep
-            call sound (PRIM(nb,:,i,j,k),cs)
-            dt_hydro = min( dt_hydro, &
-              dx(ilev)/(abs(PRIM(nb,2,i,j,k))+cs), &
-              dy(ilev)/(abs(PRIM(nb,3,i,j,k))+cs), &
-              dz(ilev)/(abs(PRIM(nb,4,i,j,k))+cs) )
-
+            if (mhd) then
+              ! MHD step
+#ifdef BFIELD
+              call cfast(prim(nb,5,i,j,k),prim(nb,1,i,j,k), prim(nb,6,i,j,k),prim(nb,7,i,j,k),prim(nb,8,i,j,k),cfx, cfy, cfz)
+              dt_hydro = min( dt_hydro, dx(ilev)/(abs(PRIM(nb,2,i,j,k))+cfx) )
+              dt_hydro = min( dt_hydro, dy(ilev)/(abs(PRIM(nb,3,i,j,k))+cfy) )
+              dt_hydro = min( dt_hydro, dz(ilev)/(abs(PRIM(nb,4,i,j,k))+cfz) )
+#endif
+            else
+              ! Hydrodynamical timestep
+              call sound (PRIM(nb,:,i,j,k),cs)
+              dt_hydro = min( dt_hydro, dx(ilev)/(abs(PRIM(nb,2,i,j,k))+cs) )
+              dt_hydro = min( dt_hydro, dy(ilev)/(abs(PRIM(nb,3,i,j,k))+cs) )
+              dt_hydro = min( dt_hydro, dz(ilev)/(abs(PRIM(nb,4,i,j,k))+cs) )
+            end if
             ! Cooling timestep - not needed at the moment
 
           end do
