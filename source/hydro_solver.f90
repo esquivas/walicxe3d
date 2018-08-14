@@ -93,6 +93,9 @@ subroutine hydroSolver ()
     case (SOLVER_HLLC)
       call Godunov (2)
 
+    case (SOLVER_HLLE)
+      call Godunov (2)
+
   end select
 
   write(logu,*) ""
