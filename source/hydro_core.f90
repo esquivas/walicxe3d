@@ -266,6 +266,10 @@ subroutine prim2flow (pvars, uvars)
   v2 = pvars(2)**2 + pvars(3)**2 + pvars(4)**2
   uvars(5) = 0.5*pvars(1)*v2 + CV*pvars(5)
 
+  if (mhd) then
+    uvars(5) = uvars(5) + 0.5 * ( pvars(6)**2 + pvars(7)**2 + pvars(8)**2 )
+  end if
+
 #ifdef BFIELD
   uvars(6) = pvars(6)
   uvars(7) = pvars(7)
@@ -299,8 +303,6 @@ subroutine flow2prim (uvars, pvars, istat)
   real, intent(out) :: pvars(neqtot)
   integer, intent(out) :: istat
 
-  real :: rhov2
-
   istat = 0
 
   if (uvars(1).eq.0.0) then
@@ -313,8 +315,12 @@ subroutine flow2prim (uvars, pvars, istat)
   pvars(3) = uvars(3)/uvars(1)
   pvars(4) = uvars(4)/uvars(1)
 
-  rhov2 = (uvars(2)**2 + uvars(3)**2 + uvars(4)**2)/uvars(1)
-  pvars(5) = (uvars(5)-0.5*rhov2)/CV
+  pvars(5) = (uvars(5) -                                               &
+             0.5* (uvars(2)**2+uvars(3)**2+uvars(4)**2)/uvars(1) ) / CV
+
+  if (mhd) then
+    pvars(5) = pvars(5) - 0.5*( uvars(6)**2+uvars(7)**2+uvars(8)**2 ) / cv
+  end if
 
   ! Floor on pressure
   if (pvars(5).lt.1.0e-30) then
@@ -358,7 +364,6 @@ subroutine prim2fluxes (pvars, dimens, flux)
   integer, intent(in) :: dimens
   real, intent(out) :: flux(neqtot)
 
-  real :: v2, etot
   real :: pvars1(neqtot)
 
   ! Make a copy of the primitives so the original ones are not split
@@ -371,20 +376,29 @@ subroutine prim2fluxes (pvars, dimens, flux)
     call swapxz(pvars1)
   end if
 
-  v2 = pvars1(2)**2 + pvars1(3)**2 + pvars1(4)**2
-  etot = 0.5*pvars1(1)*v2 + CV*pvars1(5)
+  v2 =
+  etot =
 
   ! Calculate Fluxes (formulae for X)
   flux(1) = pvars1(1)*pvars1(2)
-  flux(2) = pvars1(5) + pvars1(1)*(pvars1(2)**2)
+  flux(2) = pvars1(1)*pvars1(2)**2 + pvars1(5)
   flux(3) = pvars1(1)*pvars1(2)*pvars1(3)
   flux(4) = pvars1(1)*pvars1(2)*pvars1(4)
-  flux(5) = pvars1(2)*(etot+pvars1(5))
+  flux(5) = pvars1(2)*( 0.5*pvars1(1)*(pvars1(2)**2+pvars1(3)**2+pvars1(4)**2) &
+            + (cv+1.)*pvars1(5) )
 #ifdef BFIELD
   flux(6) = 0
   flux(7) = pvars1(2)*pvars1(7) - pvars1(3)*pvars1(6)
   flux(8) = pvars1(2)*pvars1(8) - pvars1(4)*pvars1(6)
 #endif
+
+  if (mhd) then
+    flux(2) = flux(2) + 0.5 *( pvars1(7)**2 + pvars1(8)**2 - pvars1(6)**2 )
+    flux(3) = flux(3) - pvars1(6)*pvars1(7)
+    flux(4) = flux(4) - pvars1(6)*pvars1(8)
+    flux(5) = flux(5) + pvars1(2)*(pvars1(6)**2+pvars1(7)**2+pvars1(8)**2)     &
+    - pvars1(6)*( pvars1(2)*pvars1(6)+pvars1(3)*pvars1(7)+pvars1(4)*pvars1(8) )
+  end if
 
   if (npassive.ge.1) then
     flux(firstpas:neqtot) = pvars1(2)*pvars1(firstpas:neqtot)
@@ -400,25 +414,6 @@ subroutine prim2fluxes (pvars, dimens, flux)
   return
 
 end subroutine prim2fluxes
-
-!===============================================================================
-
-!> @brief Calculates the soundspeed given a vector of primitives
-!> @param pvars Vector of primitive variables
-!> @param csound The hydrodynamical speed of sound
-subroutine sound (pvars, csound)
-
-  use parameters
-  implicit none
-
-  real, intent(in) :: pvars(neqtot)
-  real, intent(out) :: csound
-
-  csound = sqrt(gamma*pvars(5)/pvars(1))
-
-  return
-
-end subroutine sound
 
 !===============================================================================
 
@@ -473,6 +468,79 @@ subroutine swapxz (vec)
   return
 
 end subroutine swapxz
+
+!===============================================================================
+
+!> @brief Calculates the soundspeed given a vector of primitives
+!> @param pvars Vector of primitive variables
+!> @param csound The hydrodynamical speed of sound
+subroutine sound (pvars, csound)
+
+  use parameters
+  implicit none
+
+  real, intent(in) :: pvars(neqtot)
+  real, intent(out) :: csound
+
+  csound = sqrt(gamma*pvars(5)/pvars(1))
+
+  return
+
+end subroutine sound
+
+
+!=======================================================================
+
+!> @brief Computes the fast magnetosonic speeds  in the 3 coordinates
+!> @details Computes the fast magnetosonic speeds  in the 3 coordinates
+!> @param real [in] p  : value of pressure
+!> @param real [in] d  : value of density
+!> @param real [in] Bx : value of the x component of the magnetic field
+!> @param real [in] By : value of the y component of the magnetic field
+!> @param real [in] Bz : value of the z component of the magnetic field
+!> @param real [out] csx : fast magnetosonic speed in x
+!> @param real [out] csy : fast magnetosonic speed in y
+!> @param real [out] csz : fast magnetosonic speed in z
+
+subroutine cfast(p,d,bx,by,bz,cfx,cfy,cfz)
+
+  use parameters, only : gamma
+  implicit none
+  real, intent(in) :: p, d, bx, by, bz
+  real, intent(out) ::cfx,cfy,cfz
+  real :: b2
+
+  b2=bx*bx+by*by+bz*bz
+  cfx=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*bx*bx))/d)
+  cfy=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*by*by))/d)
+  cfz=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*bz*bz))/d)
+
+end subroutine cfast
+
+!=======================================================================
+
+!> @brief Computes the fast magnetosonic speed in the x direction
+!> @details Computes the fast magnetosonic speed in the x direction
+!> @param real [in] prim(neq) : vector with the primitives in one cell
+
+#ifdef BFIELD
+
+subroutine cfastX(prim,cfX)
+
+  use parameters, only : neqtot, gamma
+  implicit none
+  real, intent(in) :: prim(neqtot)
+  real, intent(out) ::cfX
+  real :: b2, cs2va2
+
+  b2=prim(6)**2+prim(7)**2+prim(8)**2
+  cs2va2 = (gamma*prim(5)+b2)/prim(1)   ! cs^2 + ca^2
+
+  cfx=sqrt(0.5*(cs2va2+sqrt(cs2va2**2-4.*gamma*prim(5)*prim(6)**2/prim(1)/prim(1) ) ) )
+
+end subroutine cfastX
+
+#endif
 
 !===============================================================================
 
