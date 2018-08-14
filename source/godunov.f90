@@ -49,6 +49,7 @@ subroutine Godunov (order)
   use boundaries, only : boundary
   use HLL,        only : HLLfluxes
   use HLLC,       only : HLLCfluxes
+  use HLLE,       only : HLLEfluxes
 
   implicit none
 
@@ -103,6 +104,9 @@ subroutine Godunov (order)
         case (SOLVER_HLLC)
           call HLLCfluxes (bIndx, 1)
 
+        case (SOLVER_HLLC)
+          call HLLEfluxes (bIndx, 1)
+
       end select
 
       ! Apply conservative formula
@@ -148,6 +152,9 @@ subroutine Godunov (order)
 
           case (SOLVER_HLLC)
             call HLLCfluxes (bIndx, 2)
+
+          case (SOLVER_HLLC)
+            call HLLEfluxes (bIndx, 2)
 
         end select
 
