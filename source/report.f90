@@ -58,9 +58,12 @@ subroutine main_report ()
     write(logu,'(1x,i0,a)') nbLocal, " local blocks"
     write(logu,*) "============================================"
   end if
-  if (verbosity >0 ) write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
-  trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
-  if (verbosity > 2) then
+  if (verbosity >0 ) then
+    if(logged .or. rank == master) &
+     write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
+     trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
+   endif
+  if ( (verbosity > 2) ) then
     write(logu,*) "============================================"
     write(logu,*) ""
   end if
