@@ -50,21 +50,25 @@ subroutine loadBalance ()
 
   integer :: mark
 
-  call tic(mark)
+  if (verbosity > 3) call tic(mark)
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "============================================"
-  write(logu,'(1x,a)') " Performing Load Balance ..."
-  write(logu,'(1x,a)') "============================================"
-  write(logu,*) ""
-
+  if (verbosity > 1) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "============================================"
+    write(logu,'(1x,a)') " Performing Load Balance ..."
+    write(logu,'(1x,a)') "============================================"
+    write(logu,*) ""
+  end if
+  
   ! Main load balacing routine
   call doBalance ()
 
   ! Done
-  write(logu,*) ""
-  write(logu,'(1x,a,a)') "> Load balance completed in ", nicetoc(mark)
-  write(logu,*) ""
+  if (verbosity > 3) then
+    write(logu,*) ""
+    write(logu,'(1x,a,a)') "> Load balance completed in ", nicetoc(mark)
+    write(logu,*) ""
+  end if
 
 end subroutine loadBalance
 
