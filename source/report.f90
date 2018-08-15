@@ -48,21 +48,23 @@ subroutine main_report ()
   call nicetime(dt*t_sc, dtstr)
 
   ! Report progress
-  if (verbosity > 0) then
+  if (verbosity > 2) then
     write(logu,*) "============================================"
-    write(logu,'(1x,a,i0,a)') "Iteration " , it, " complete!"
+    write(logu,'(1x,a,i0,a,i0)') "Iteration " , it, " complete! in rank ",rank
     write(logu,'(1x,a)') stamp()
     write(logu,'(1x,a,a)') "Elapsed: ", nicetoc(start_mark)
     write(logu,'(1x,a,a)') "time = ", trim(timestr)
     write(logu,'(1x,a,a)') "dt = ", trim(dtstr)
     write(logu,'(1x,i0,a)') nbLocal, " local blocks"
     write(logu,*) "============================================"
-    write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
-    trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
+  end if
+  if (verbosity >0 ) write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
+  trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
+  if (verbosity > 2) then
     write(logu,*) "============================================"
     write(logu,*) ""
-    call flush(logu)
   end if
+  call flush(logu)
 
 end subroutine main_report
 
