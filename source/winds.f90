@@ -139,8 +139,10 @@ contains
     real :: zone(6)
     integer :: zlevel
 
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Imposing spherical wind source ..."
+    if (verbosity > 0) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Imposing spherical wind source ..."
+    end if
 
     ! Unpack wind source parameters
     xc = wind_params%xc
@@ -158,16 +160,18 @@ contains
 
     ! Report wind parameters
     ! TODO: REPORT ONLY ON FIRST CALL
-    write(logu,'(1x,a,es12.5)') "Mdot = ", mdot
-    write(logu,'(1x,a,es12.5)') "vinf = ", vinf
-    write(logu,'(1x,a,es12.5)') "Radius = ", radius
-    write(logu,'(1x,a,es12.5)') "Rho(R) = ", mdot/vinf/radius/radius/(4*PI)
-    write(logu,'(1x,a,es12.5)') "Temp = ", temp
-    write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
+    if (verbosity > 0) then
+      write(logu,'(1x,a,es12.5)') "Mdot = ", mdot
+      write(logu,'(1x,a,es12.5)') "vinf = ", vinf
+      write(logu,'(1x,a,es12.5)') "Radius = ", radius
+      write(logu,'(1x,a,es12.5)') "Rho(R) = ", mdot/vinf/radius/radius/(4*PI)
+      write(logu,'(1x,a,es12.5)') "Temp = ", temp
+      write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
+    end if
 
     ! Refine the zone around the wind source to provide adequate resolution
     if (it.eq.0) then
-      write(logu,*) "(winds)it=",it
+      if (verbosity > 0) write(logu,*) "(winds)it=",it
       zone(1) = xc - radius
       zone(2) = xc + radius
       zone(3) = yc - radius
@@ -261,9 +265,11 @@ contains
     integer :: neighType
     integer :: neighList(4)
 
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Refreshing plane wind ..."
-
+    if (verbosity > 0) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Refreshing plane wind ..."
+    end if
+    
     ! Unpack wind source parameters
     plane = wind_params%plane
     dens  = wind_params%rho
