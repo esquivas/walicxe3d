@@ -39,7 +39,7 @@ subroutine deinit ()
   implicit none
 
   ! Deallocate dynamic arrays
-  write(logu,'(a)') "Deallocating memory ..."
+  if (verbosity > 0) write(logu,'(a)') "Deallocating memory ..."
   deallocate (U)
   deallocate (UP)
   deallocate (PRIM)
@@ -57,7 +57,7 @@ subroutine deinit ()
   deallocate (dz)
 
 #ifdef MPIP
-  write(logu,'(a)') "Finalizing MPI ..."
+  if (verbosity > 1)  write(logu,'(a)') "Finalizing MPI ..."
   call mpi_finalize (ierr)
 #endif
 
