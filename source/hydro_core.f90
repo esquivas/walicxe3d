@@ -384,7 +384,7 @@ subroutine prim2fluxes (pvars, dimens, flux)
   flux(5) = pvars1(2)*( 0.5*pvars1(1)*(pvars1(2)**2+pvars1(3)**2+pvars1(4)**2) &
             + (cv+1.)*pvars1(5) )
 #ifdef BFIELD
-  flux(6) = 0
+  flux(6) = 0.
   flux(7) = pvars1(2)*pvars1(7) - pvars1(3)*pvars1(6)
   flux(8) = pvars1(2)*pvars1(8) - pvars1(4)*pvars1(6)
 #endif
