@@ -49,16 +49,18 @@ subroutine writeOutput (noutput)
   logical :: dir_exists
   integer :: mark, startmark, p
 
-  write(logu,*) ""
-  write(logu,*) "============================================"
-  write(logu,'(1x,a)') " Writing data ouput ..."
-  write(logu,*) "============================================"
-  write(logu,'(1x,a)') stamp()
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,*) "============================================"
+    write(logu,'(1x,a)') " Writing data ouput ..."
+    write(logu,*) "============================================"
+    write(logu,'(1x,a)') stamp()
+  end if
 
   if (output_mode.eq.OUT_SIMULT) then
-    write(logu,'(1x,a)') "Output mode: simultaneous"
+      if (verbosity > 2) write(logu,'(1x,a)') "Output mode: simultaneous"
   else if (output_mode.eq.OUT_TURNS) then
-    write(logu,'(1x,a)') "Output mode: turn-based"
+      if (verbosity > 2) write(logu,'(1x,a)') "Output mode: turn-based"
   else
     write(logu,'(1x,a,i0)') "Unrecognized data output mode: ", output_mode
     write(logu,'(1x,a)') "***ABORTING***"
@@ -66,15 +68,17 @@ subroutine writeOutput (noutput)
   end if
 
   if (.not.(output_bin.or.output_vtk)) then
-    write(logu,'(1x,a)') "No output format was selected in parameters.f90!"
-    write(logu,'(1x,a)') "Skipping data output."
-    write(logu,*) ""
+      if (verbosity > 0) then
+        write(logu,'(1x,a)') "No output format was selected in parameters.f90!"
+        write(logu,'(1x,a)') "Skipping data output."
+        write(logu,*) ""
+      end if
     return
   else
     ! create log directory in case it's missing
     inquire(directory=trim(datadir),exist=dir_exists)
     if (.not.dir_exists .and. rank ==master ) then
-      write(*,'(a)') "Could not find datadir, creating it anew"
+      write(logu,'(a)') "Could not find datadir, creating it anew"
       call system('mkdir -p ' // trim(datadir) )
     end if
     call mpi_barrier(mpi_comm_world, ierr)
@@ -86,9 +90,11 @@ subroutine writeOutput (noutput)
   do p=0,nprocs-1
     if (rank.eq.p) then
 
-      call tic(mark)
-      write(logu,'(1x,a,i0,a)') "> Writing output ", noutput, " to disk ..."
-      write(logu,*) ""
+        if (verbosity > 3) call tic(mark)
+        if (verbosity > 0) then
+          write(logu,'(1x,a,i0,a)') "> Writing output ", noutput, " to disk ..."
+          write(logu,*) ""
+        end if
 
       ! Binary data format - writes flow vars (Us)
       if (output_bin) then
@@ -109,16 +115,16 @@ subroutine writeOutput (noutput)
         call writeState (noutput)
       end if
 
-      write(logu,'(1x,a,i0,a,a)') "> Completed output ", noutput, &
+        if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "> Completed output ", noutput, &
       " in ", nicetoc(mark)
-      write(logu,'(1x,a)') stamp()
-      write(logu,*) ""
+        if (verbosity > 3) write(logu,'(1x,a)') stamp()
+        if (verbosity > 3) write(logu,*) ""
 
     else
 
       if (output_mode.eq.OUT_TURNS) then
-        write(logu,'(1x,a,i0,a)') "Process ", p, " writing output ..."
-        write(logu,'(1x,a)') stamp()
+          if (verbosity > 0) write(logu,'(1x,a,i0,a)') "Process ", p, " writing output ..."
+          if (verbosity > 3) write(logu,'(1x,a)') stamp()
         write(logu,*) ""
         call mpi_barrier (mpi_comm_world, ierr)
       end if
@@ -127,10 +133,12 @@ subroutine writeOutput (noutput)
   end do
 
   call mpi_barrier (mpi_comm_world, ierr)
-  write(logu,'(1x,a,i0,a,a)') "> All ranks completed output ", noutput, &
-  " in ", nicetoc(startmark)
-  write(logu,'(1x,a)') stamp()
-  write(logu,*) ""
+    if (verbosity > 3) then
+      write(logu,'(1x,a,i0,a,a)') "> All ranks completed output ", noutput, &
+      " in ", nicetoc(startmark)
+      write(logu,'(1x,a)') stamp()
+      write(logu,*) ""
+    end if
 
 end subroutine writeOutput
 
@@ -179,7 +187,7 @@ subroutine writeBin (noutput)
   end if
 
   ! Write data
-  write(logu,'(1x,a,a,a)') "Writing data blocks to file ", trim(blocksfile), " ..."
+    if (verbosity > 0) write(logu,'(1x,a,a,a)') "Writing data blocks to file ", trim(blocksfile), " ..."
   nblocks = 0
   write(unitout) nbLocal
   do nb=1,nbMaxProc
@@ -191,8 +199,8 @@ subroutine writeBin (noutput)
   end do
 
   close(unitout)
-  write(logu,'(1x,a,i0,a)') "Dumping ", nblocks, " local blocks"
-  write(logu,'(1x,a,a)') "Succesfully wrote data file."
+  if (verbosity > 2)  write(logu,'(1x,a,i0,a)') "Dumping ", nblocks, " local blocks"
+  if (verbosity > 2) write(logu,'(1x,a,a)') "Succesfully wrote data file."
   write(logu,*) ""
 
 end subroutine writeBin
@@ -227,7 +235,7 @@ subroutine writeState (noutput)
   call replace (statefile, 'YYYY', noutstr)
   write(statefile,'(a)') trim(datadir) // trim(slash) // trim(statefile) // ".dat"
 
-  write(logu,'(1x,a,a,a)') "Writing state file ", trim(statefile), " ..."
+  if (verbosity > 2)  write(logu,'(1x,a,a,a)') "Writing state file ", trim(statefile), " ..."
 
   ! Open data file
   unitout = 10 + rank
@@ -244,9 +252,10 @@ subroutine writeState (noutput)
   write(unitout,'(a)') datadir
 
   close(unitout)
-  write(logu,'(1x,a,i3,a)') "Succesfully wrote state file."
-  write(logu,*) ""
-
+  if (verbosity > 2) then
+    write(logu,'(1x,a,i3,a)') "Succesfully wrote state file."
+    write(logu,*) ""
+  end if
 
 end subroutine writeState
 
@@ -302,8 +311,11 @@ subroutine write3DVTKBlocks (noutput)
       close(unit=7)
       call clean_abort (ERROR_OUTPUT_FILE_OPEN)
     else
-      write(logu,*)
-      write(logu,'(1x,a,a)') "Writing VisIt metadata file ", trim(visitfile)
+      if (verbosity > 2) then
+        write(logu,*)
+        write(logu,'(1x,a,a)') "Writing VisIt metadata file ", trim(visitfile)
+      end if
+
       if (noutput.eq.0) then
         write (7, '(a,i5)') "!NBLOCKS ", nProcs
       end if
@@ -338,8 +350,10 @@ subroutine write3DVTKBlocks (noutput)
     call clean_abort (ERROR_OUTPUT_FILE_OPEN)
   end if
 
-  write(logu,*) ""
-  write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing BLOCKS data file ", trim(blocksfile), " ..."
+  if (verbosity > 2) then
+    write(logu,*) ""
+    write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing BLOCKS data file ", trim(blocksfile), " ..."
+  end if
 
   ! VTK Header
   write(unitout) "# vtk DataFile Version 4.2", lf
@@ -353,8 +367,8 @@ subroutine write3DVTKBlocks (noutput)
 
   ! VTK cell vertices list
   ! DEBUG
-!  nextrep = 0.01
-  write(logu,'(1x,a)') "Writing VTK cell vertices list ..."
+  !  nextrep = 0.01
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing VTK cell vertices list ..."
   ! DEBUG
   write(cbuffer,'(a,1x,i12,1x,a)') "POINTS", npoints, "float"
   write(unitout) trim(cbuffer), lf
@@ -414,8 +428,8 @@ subroutine write3DVTKBlocks (noutput)
 
   ! VTK cell descriptions (i.e., which vertices define each cell)
   ! DEBUG
-!  nextrep = 0.01
-  write(logu,'(1x,a)') "Writing VTK cell descriptions ..."
+  !  nextrep = 0.01
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing VTK cell descriptions ..."
   ! DEBUG
   write(cbuffer,'(a,1x,i12,1x,i12)') "CELLS", ncells, ncells*9
   write(unitout) trim(cbuffer), lf
@@ -449,8 +463,8 @@ subroutine write3DVTKBlocks (noutput)
 
   ! VTK cell types - all are voxels, type=11
   ! DEBUG
-!  nextrep = 0.01
-  write(logu,'(a)') " Writing VTK cell types ..."
+  !  nextrep = 0.01
+  if (verbosity > 2) write(logu,'(a)') " Writing VTK cell types ..."
   ! DEBUG
   write(cbuffer,'(a,1x,i12)') "CELL_TYPES", ncells
   write(unitout) trim(cbuffer), lf
@@ -488,7 +502,7 @@ subroutine write3DVTKBlocks (noutput)
 !  nextrep = 0.01
   counter = 0
   npoints = nbLocal*ncells_x*ncells_y*ncells_z
-  write(logu,'(1x,a)') "Writing Density values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing Density values ..."
   write(cbuffer,'(a)')  "SCALARS rho float 1"
   write(unitout) trim(cbuffer), lf
   write(cbuffer,'(a)')  "LOOKUP_TABLE default"
@@ -524,7 +538,7 @@ subroutine write3DVTKBlocks (noutput)
 !  nextrep = 0.01
   counter = 0
   npoints = nbLocal*ncells_x*ncells_y*ncells_z
-  write(logu,'(1x,a)') "Writing Velocity values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing Velocity values ..."
   ! DEBUG
   write(cbuffer,'(a)') "VECTORS vel float"
   write(unitout) trim(cbuffer), lf
@@ -563,7 +577,7 @@ subroutine write3DVTKBlocks (noutput)
 !  nextrep = 0.01
   counter = 0
   npoints = nbLocal*ncells_x*ncells_y*ncells_z
-  write(logu,'(1x,a)') "Writing Pressure values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing Pressure values ..."
   ! DEBUG
   write(cbuffer,'(A)')  "SCALARS P float 1"
   write(unitout) trim(cbuffer), lf
@@ -602,7 +616,7 @@ subroutine write3DVTKBlocks (noutput)
 !  nextrep = 0.01
   counter = 0
   npoints = nbLocal*ncells_x*ncells_y*ncells_z
-  write(logu,'(1x,a)') "Writing Magnetic Field values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "Writing Magnetic Field values ..."
   ! DEBUG
   write(cbuffer,'(a)') "VECTORS B float"
   write(unitout) trim(cbuffer), lf
@@ -660,7 +674,7 @@ subroutine write3DVTKBlocks (noutput)
 
   ! Metallicity
   if (cooling_type.eq.COOL_TABLE_METAL) then
-    write(logu,'(1x,a)') "Writing metallicity values ..."
+    if (verbosity > 2) write(logu,'(1x,a)') "Writing metallicity values ..."
     write(cbuffer,'(a)') "SCALARS Z float 1"
     write(unitout) trim(cbuffer), lf
     write(cbuffer,'(a)') "LOOKUP_TABLE default"
@@ -689,7 +703,7 @@ subroutine write3DVTKBlocks (noutput)
     pas0 = 1
   end if
   do pas=pas0,npassive
-    write(logu,'(1x,a,i0,a)') "Writing Passive Scalar ", pas, " values ..."
+    if (verbosity > 2) write(logu,'(1x,a,i0,a)') "Writing Passive Scalar ", pas, " values ..."
     write(cbuffer,'(a,i0,a)') "SCALARS passive", pas, " float 1"
     write(unitout) trim(cbuffer), lf
     write(cbuffer,'(a)') "LOOKUP_TABLE default"
@@ -713,10 +727,12 @@ subroutine write3DVTKBlocks (noutput)
 
   close(unitout)
   if (nbLocal.eq.0) then
-    write(logu,'(1x,a)') "No local blocks to write. Wrote VTK file with no data."
+    if (verbosity > 2) write(logu,'(1x,a)') "No local blocks to write. Wrote VTK file with no data."
   else
-    write(logu,'(1x,a,i3,a)') "Succesfully wrote ", nblocks, " local blocks"
-    write(logu,'(1x,a,a)') "Wrote VTK file."
+    if (verbosity > 2) then
+      write(logu,'(1x,a,i3,a)') "Succesfully wrote ", nblocks, " local blocks"
+      write(logu,'(1x,a,a)') "Wrote VTK file."
+    end if
   end if
 
 end subroutine write3DVTKBlocks
@@ -778,8 +794,10 @@ subroutine write3DVTKGrid (noutput)
     call clean_abort (ERROR_OUTPUT_FILE_OPEN)
   end if
 
-  write(logu,*) ""
-  write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing GRID meta file ", trim(gridfile), " ..."
+  if (verbosity > 2) then
+    write(logu,*) ""
+    write(logu,'(1x,a,i0,a,a,a)') "Rank ", rank, " writing GRID meta file ", trim(gridfile), " ..."
+  end if
 
   ! VTK Header
   write(unitout) "# vtk DataFile Version 4.2", lf
@@ -825,7 +843,7 @@ subroutine write3DVTKGrid (noutput)
     end if
   end do
   write(unitout) lf
-  write(logu,'(a,i6)') " Number of global active blocks: ", counter
+  if (verbosity > 2) write(logu,'(a,i6)') " Number of global active blocks: ", counter
 
   ! VTK cell descriptions (i.e., which vertices define each cell)
   write(cbuffer,'(a,1x,i12,1x,i12)') "CELLS", ncells, ncells*(8+1)
@@ -901,7 +919,7 @@ subroutine write3DVTKGrid (noutput)
   write(unitout) lf
 
   close(unitout)
-  write(logu,'(1x,a,a)') "Wrote GRID data file."
+  if (verbosity > 2) write(logu,'(1x,a,a)') "Wrote GRID data file."
 
 end subroutine write3DVTKGrid
 
@@ -934,7 +952,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   open (unit=unitout, file=outfname, status='unknown', access='stream', &
         convert="BIG_ENDIAN", iostat=istat)
   if (istat.ne.0) then
-    write (*,'(a,a,a)') "Could not open the file '", trim(outfname), "' !"
+    write (logu,'(a,a,a)') "Could not open the file '", trim(outfname), "' !"
     close (unitout)
     stop
   end if
@@ -957,7 +975,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   write(unitout) trim(cbuffer),lf
 
   ! DENSITY
-  write(logu,'(1x,a)') " Writing Density values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') " Writing Density values ..."
   write(cbuffer,'(a)')  "SCALARS rho float 1"
   write(unitout) trim(cbuffer), lf
   write(cbuffer,'(a)')  "LOOKUP_TABLE default"
@@ -971,7 +989,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   write(unitout) lf
 
   ! PRESSURE
-  write(logu,'(1x,a)') " Writing Pressure values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') " Writing Pressure values ..."
   write(cbuffer,'(a)')  "SCALARS P float 1"
   write(unitout) trim(cbuffer), lf
   write(cbuffer,'(a)')  "LOOKUP_TABLE default"
@@ -985,7 +1003,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   write(unitout) lf
 
   ! TEMPERATURE
-  write(logu,'(1x,a)') " Writing Temperature values ..."
+  if (verbosity > 2) write(logu,'(1x,a)') " Writing Temperature values ..."
   write(cbuffer,'(a)')  "SCALARS T float 1"
   write(unitout) trim(cbuffer), lf
   write(cbuffer,'(a)')  "LOOKUP_TABLE default"
@@ -1000,7 +1018,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   write(unitout) lf
 
   ! VELOCITY
-  write(logu,'(1x,a)') " Writing Velocity components ..."
+  if (verbosity > 2) write(logu,'(1x,a)') " Writing Velocity components ..."
   write(cbuffer,'(a)') 'VECTORS vel float'
   write(unitout) trim(cbuffer),lf
   do j=1,ny
@@ -1014,7 +1032,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
 
 #ifdef BFIELD
   ! MAGNETIC FIELD
-  write(logu,'(1x,a)') " Writing Magnetic Field components ..."
+  if (verbosity > 2) write(logu,'(1x,a)') " Writing Magnetic Field components ..."
   write(cbuffer,'(a)') 'VECTORS B float'
   write(unitout) trim(cbuffer),lf
   do j=1,ny
@@ -1030,7 +1048,7 @@ subroutine write2DMapVTK (outmap, nx, ny, outfname)
   ! Missing passive scalars ...
 
   close(unitout)
-  write(logu,'(1x,a,a)') "Successfully wrote VTK file."
+  if (verbosity > 2) write(logu,'(1x,a,a)') "Successfully wrote VTK file."
 
 end subroutine write2DMapVTK
 
