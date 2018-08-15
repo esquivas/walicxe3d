@@ -49,11 +49,11 @@ subroutine updatePrims ()
 
   integer :: mark
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Updating primitive variables ..."
-  call tic(mark)
+  if (verbosity > 1) write(logu,*) ""
+  if (verbosity > 1) write(logu,'(1x,a)') "> Updating primitive variables ..."
+  if (verbosity > 3) call tic(mark)
   call calcPrimsAll (U, PRIM, CELLS_ALL)
-  write(logu,'(1x,a,a)') "> Updated primitives in", nicetoc(mark)
+  if (verbosity > 3) write(logu,'(1x,a,a)') "> Updated primitives in", nicetoc(mark)
 
 end subroutine updatePrims
 
@@ -375,9 +375,6 @@ subroutine prim2fluxes (pvars, dimens, flux)
   else if (dimens.eq.DIM_Z) then
     call swapxz(pvars1)
   end if
-
-  v2 =
-  etot =
 
   ! Calculate Fluxes (formulae for X)
   flux(1) = pvars1(1)*pvars1(2)
