@@ -44,6 +44,7 @@ subroutine initmain ()
   use globals
   use tictoc
   use clean_quit, only : clean_abort
+  use coolingModule, only : loadcooldata, loadcooldata_metal
   implicit none
 
   integer :: nps, istat, inext
@@ -134,178 +135,186 @@ subroutine initmain ()
   end if
 
   ! =================================
-  call tic(mark)
-  write(logu,*) ""
-  write(logu,'(a)') "================================================================================"
-  if (logged) then
+  if (verbosity > 3) call tic(mark)
+  if (verbosity > 0) then
     write(logu,*) ""
-    write(logu,'(1x,a,a)') "> Started logfile ", trim(logfile)
-  end if
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Initializing ... "
+    write(logu,'(a)') "================================================================================"
+    if (logged) then
+      write(logu,*) ""
+      write(logu,'(1x,a,a)') "> Started logfile ", trim(logfile)
+    end if
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Initializing ... "
 
-  if (dowarm) then
-    write(logu,'(1x,a)') "A WARM START has been scheduled"
-  end if
-
+    if (dowarm) then
+      write(logu,'(1x,a)') "A WARM START has been scheduled"
+    end if
+  endif
   ! Get hostname
   call HostNm(host)
 
-  if(logged.or.rank.eq.master) then
-    write(logu,*)
-    write(logu,'(1x,a)') "***************************************************"
-    write(logu,'(1x,a)') "*   __    __      _ _               _____ ____    *"
-    write(logu,'(1x,a)') "*  / / /\ \ \__ _| (_) _____  _____|___ /|  _ \   *"
-    write(logu,'(1x,a)') "*  \ \/  \/ / _` | | |/ __\ \/ / _ \ |_ \| | | |  *"
-    write(logu,'(1x,a)') "*   \  /\  / (_| | | | (__ |  |  __/___) | |_| |  *"
-    write(logu,'(1x,a)') "*    \/  \/ \__,_|_|_|\___/_/\_\___|____/|____/   *"
-    write(logu,'(1x,a)') "*                                                 *"
-    write(logu,'(1x,a)') "*         Version 1.2 ($Revision:: 76  $)         *"
-    write(logu,'(1x,a)') "*                                                 *"
+  if (verbosity > 0) then
+    if(logged.or.rank.eq.master) then
+      write(logu,*)
+      write(logu,'(1x,a)') "***************************************************"
+      write(logu,'(1x,a)') "*   __    __      _ _               _____ ____    *"
+      write(logu,'(1x,a)') "*  / / /\ \ \__ _| (_) _____  _____|___ /|  _ \   *"
+      write(logu,'(1x,a)') "*  \ \/  \/ / _` | | |/ __\ \/ / _ \ |_ \| | | |  *"
+      write(logu,'(1x,a)') "*   \  /\  / (_| | | | (__ |  |  __/___) | |_| |  *"
+      write(logu,'(1x,a)') "*    \/  \/ \__,_|_|_|\___/_/\_\___|____/|____/   *"
+      write(logu,'(1x,a)') "*                                                 *"
+      write(logu,'(1x,a)') "*         Version 1.2 ($Revision:: 76  $)         *"
+      write(logu,'(1x,a)') "*                                                 *"
 #ifdef MPIP
-    write(logu,'(1x,a,i3,a)') "*        Running with MPI on ", nProcs , " processors       *"
+      write(logu,'(1x,a,i3,a)') "*        Running with MPI on ", nProcs , " processors       *"
 #else
-    write(logu,'(1x,a)') "*               Running serially                  *"
+      write(logu,'(1x,a)') "*               Running serially                  *"
 #endif
-    write(logu,'(1x,a,a,a)') "*        Hostname: ", host, "                *"
-    write(logu,'(1x,a,a,a)') "*        Start: ", STAMP(), "            *"
-    write(logu,'(1x,a)') "*                                                 *"
-    write(logu,'(1x,a)') "***************************************************"
+      write(logu,'(1x,a,a,a)') "*        Hostname: ", host, "                *"
+      write(logu,'(1x,a,a,a)') "*        Start: ", STAMP(), "            *"
+      write(logu,'(1x,a)') "*                                                 *"
+      write(logu,'(1x,a)') "***************************************************"
+    end if
   end if
+  if (verbosity > 3) call tic (start_mark)
+  if (verbosity > 1) then
+    write(logu,*) ""
+    write(logu,'(1x,a,i0,a)') "Processor ", rank, " ready."
 
-  call tic (start_mark)
+    ! =================================
 
-  write(logu,*) ""
-  write(logu,'(1x,a,i0,a)') "Processor ", rank, " ready."
+    ! Report parameters. For warm starts, critical parameters are also verified.
 
-  ! =================================
+    write(logu,*) ""
+    write(logu,'(1x,a)') "============================================"
+    write(logu,'(1x,a)') " Doing basic initializations ..."
+    write(logu,'(1x,a)') "============================================"
 
-  ! Report parameters. For warm starts, critical parameters are also verified.
+    write(logu,*) ""
+    write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box x-size:  ", xphystot, " cm / ", xphystot/PC, " pc"
+    write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box y-size:  ", yphystot, " cm / ", yphystot/PC, " pc"
+    write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box z-size:  ", zphystot, " cm / ", zphystot/PC, " pc"
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "============================================"
-  write(logu,'(1x,a)') " Doing basic initializations ..."
-  write(logu,'(1x,a)') "============================================"
+    write(logu,*) ""
+    if (mesh_method.eq.MESH_AUTO) then
+      write(logu,'(1x,a)') "> Mesh initialization method: Automatic"
+      write(logu,'(1x,a,i0)') "Max-level cells along x:  ", p_maxcells_x
+      write(logu,'(1x,a,i0)') "Max-level cells along y:  ", p_maxcells_y
+      write(logu,'(1x,a,i0)') "Max-level cells along z:  ", p_maxcells_z
+    else if (mesh_method.eq.MESH_MANUAL) then
+      write(logu,'(1x,a)') "> Mesh initialization method: Manual"
+      write(logu,'(1x,a,i0)') " Number of root blocks along x:  ", p_nbrootx
+      write(logu,'(1x,a,i0)') " Number of root blocks along y:  ", p_nbrooty
+      write(logu,'(1x,a,i0)') " Number of root blocks along z:  ", p_nbrootz
+      write(logu,'(1x,a,i0)') " Number of refinement levels:  ", p_maxlev
+    end if
 
-  write(logu,*) ""
-  write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box x-size:  ", xphystot, " cm / ", xphystot/PC, " pc"
-  write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box y-size:  ", yphystot, " cm / ", yphystot/PC, " pc"
-  write(logu,'(1x,a,es12.5,a,f7.3,a)') "Simulation box z-size:  ", zphystot, " cm / ", zphystot/PC, " pc"
+    write(logu,*) ""
+    write(logu,'(1x,a,f7.1,a)') "Allowed RAM per process: ", RAM_per_proc, " MB"
 
-  write(logu,*) ""
-  if (mesh_method.eq.MESH_AUTO) then
-    write(logu,'(1x,a)') "> Mesh initialization method: Automatic"
-    write(logu,'(1x,a,i0)') "Max-level cells along x:  ", p_maxcells_x
-    write(logu,'(1x,a,i0)') "Max-level cells along y:  ", p_maxcells_y
-    write(logu,'(1x,a,i0)') "Max-level cells along z:  ", p_maxcells_z
-  else if (mesh_method.eq.MESH_MANUAL) then
-    write(logu,'(1x,a)') "> Mesh initialization method: Manual"
-    write(logu,'(1x,a,i0)') " Number of root blocks along x:  ", p_nbrootx
-    write(logu,'(1x,a,i0)') " Number of root blocks along y:  ", p_nbrooty
-    write(logu,'(1x,a,i0)') " Number of root blocks along z:  ", p_nbrootz
-    write(logu,'(1x,a,i0)') " Number of refinement levels:  ", p_maxlev
-  end if
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Mesh parameters"
+    write(logu,'(1x,a,i0)') "Max blocks per processor:  ", nbMaxProc
+    write(logu,'(1x,a,i0)') "Cells per block along x:   ", ncells_x
+    write(logu,'(1x,a,i0)') "Cells per block along y:   ", ncells_y
+    write(logu,'(1x,a,i0)') "Cells per block along z:   ", ncells_z
+    write(logu,'(1x,a,i0)') "Ghost cell layer depth:    ", nghost
+    write(logu,'(1x,a,f5.2)') "Refinement Threshold:  ", refineThres
+    write(logu,'(1x,a,f5.2)') "Coarsening Threshold:  ", coarseThres
 
-  write(logu,*) ""
-  write(logu,'(1x,a,f7.1,a)') "Allowed RAM per process: ", RAM_per_proc, " MB"
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Boundary Conditions"
+    write(logu,'(1x,a,a)') "Left:   " , trim(bcname(bc_left))
+    write(logu,'(1x,a,a)') "Right:  ", trim(bcname(bc_right))
+    write(logu,'(1x,a,a)') "Front:  ", trim(bcname(bc_front))
+    write(logu,'(1x,a,a)') "Back:   ", trim(bcname(bc_back))
+    write(logu,'(1x,a,a)') "Bottom: ", trim(bcname(bc_bottom))
+    write(logu,'(1x,a,a)') "Top:    ", trim(bcname(bc_top))
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Mesh parameters"
-  write(logu,'(1x,a,i0)') "Max blocks per processor:  ", nbMaxProc
-  write(logu,'(1x,a,i0)') "Cells per block along x:   ", ncells_x
-  write(logu,'(1x,a,i0)') "Cells per block along y:   ", ncells_y
-  write(logu,'(1x,a,i0)') "Cells per block along z:   ", ncells_z
-  write(logu,'(1x,a,i0)') "Ghost cell layer depth:    ", nghost
-  write(logu,'(1x,a,f5.2)') "Refinement Threshold:  ", refineThres
-  write(logu,'(1x,a,f5.2)') "Coarsening Threshold:  ", coarseThres
-
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Boundary Conditions"
-  write(logu,'(1x,a,a)') "Left:   " , trim(bcname(bc_left))
-  write(logu,'(1x,a,a)') "Right:  ", trim(bcname(bc_right))
-  write(logu,'(1x,a,a)') "Front:  ", trim(bcname(bc_front))
-  write(logu,'(1x,a,a)') "Back:   ", trim(bcname(bc_back))
-  write(logu,'(1x,a,a)') "Bottom: ", trim(bcname(bc_bottom))
-  write(logu,'(1x,a,a)') "Top:    ", trim(bcname(bc_top))
-
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Data Output"
-  write(logu,'(1x,a,a)') "Data directory:     ", datadir
-  write(logu,'(1x,a,a)') "Logging directory:  ", logdir
-  write(logu,'(1x,a,a)') "Datafile template:  ", blockstpl
-  write(logu,'(1x,a,a)') "Gridfile template:  ", gridtpl
-  write(logu,'(1x,a,a)') "Statefile template: ", statetpl
-  if (output_bin) then
-    write(logu,'(1x,a)') "Output in internal format is ON"
-  else
-    write(logu,'(1x,a)') "Output in internal format is OFF"
-  end if
-  if (output_vtk) then
-    write(logu,'(1x,a)') "Output in VisIt format is ON"
-  else
-    write(logu,'(1x,a)') "Output in VisIt format is OFF"
-  end if
-  if (units_type.eq.CODE_UNITS) write(logu,'(1x,a)') "Data dumped in Code Units"
-  if (units_type.eq.PHYS_UNITS) write(logu,'(1x,a)') "Data dumped in Physical Units"
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Data Output"
+    write(logu,'(1x,a,a)') "Data directory:     ", datadir
+    write(logu,'(1x,a,a)') "Logging directory:  ", logdir
+    write(logu,'(1x,a,a)') "Datafile template:  ", blockstpl
+    write(logu,'(1x,a,a)') "Gridfile template:  ", gridtpl
+    write(logu,'(1x,a,a)') "Statefile template: ", statetpl
+    if (output_bin) then
+      write(logu,'(1x,a)') "Output in internal format is ON"
+    else
+      write(logu,'(1x,a)') "Output in internal format is OFF"
+    end if
+    if (output_vtk) then
+      write(logu,'(1x,a)') "Output in VisIt format is ON"
+    else
+      write(logu,'(1x,a)') "Output in VisIt format is OFF"
+    end if
+    if (units_type.eq.CODE_UNITS) write(logu,'(1x,a)') "Data dumped in Code Units"
+    if (units_type.eq.PHYS_UNITS) write(logu,'(1x,a)') "Data dumped in Physical Units"
 
 #ifdef BFIELD
-  if ( mhd ) then
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Active magnetic field ENABLED (MHD)"
-  else
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
-  end if
+    if ( mhd ) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Active magnetic field ENABLED (MHD)"
+      write(logu,*) ""
+      if (eight_wave)      &
+      write(logu,'(1x,a)') "> div(B) constrained with 8 wave method'"
+      if (enable_field_cd) &
+      write(logu,'(1x,a)') "> div(B) constrained with field CD method'"
+    else
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
+    end if
 #endif
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Hydro Solver"
-  write(logu,'(1x,a,a)') "Type: ", trim(solvername(solver_type))
-  if ((solver_type.eq.SOLVER_HLL).or.(solver_type.eq.SOLVER_HLLC)) then
-    ! Check that two ghost cells are used for second-order solvers
-    if (nghost.ne.2) then
-      write(logu,*) "This solver requires TWO ghost cells!"
-      write(logu,*) "Modify parameters.f90"
-      write(logu,*) "***ABORTING***"
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Hydro Solver"
+    write(logu,'(1x,a,a)') "Type: ", trim(solvername(solver_type))
+    if ((solver_type.eq.SOLVER_HLL).or.(solver_type.eq.SOLVER_HLLC)) then
+      ! Check that two ghost cells are used for second-order solvers
+      if (nghost.ne.2) then
+        write(logu,*) "This solver requires TWO ghost cells!"
+        write(logu,*) "Modify parameters.f90"
+        write(logu,*) "***ABORTING***"
+      end if
+      write(logu,'(1x,a,a)') "Limiter: ", trim(limitername(limiter_type))
     end if
-    write(logu,'(1x,a,a)') "Limiter: ", trim(limitername(limiter_type))
+    write(logu,'(1x,a,i0)') "Hydro equations:  ", neqhydro
+    write(logu,'(1x,a,i0)') "MHD equations:    ", neqmhd
+    write(logu,'(1x,a,i0)') "Passive scalars:  ", npassive
+    write(logu,'(1x,a,i0)') "Total equations:  ", neqtot
+    write(logu,'(1x,a,f6.3)') "CFL parameter:  ", CFL
+    write(logu,'(1x,a,f6.3)') "Artificial viscosity:  ", visc_eta
+
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Gas Parameters"
+    write(logu,'(1x,a,f6.3)') "gamma = ", gamma
+    write(logu,'(1x,a,f6.3)') "mu0   = ", mu0
+    write(logu,'(1x,a,f6.3)') "mui   = ", mui
+    write(logu,'(1x,a,f8.1)') "ion_thres = ", ion_thres
+
+    ! Report unit scalings
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Unit scalings (1 code unit = ?)"
+    write(logu,'(1x,a,es12.5,a)') "Length:   ", l_sc, " cm"
+    write(logu,'(1x,a,es12.5,a)') "Density:  ", d_sc, " g cm^-3"
+    write(logu,'(1x,a,es12.5,a)') "Velocity: ", v_sc, " cm s^-1"
+    write(logu,'(1x,a,es12.5,a)') "Pressure: ", p_sc, " erg cm^-3"
+    write(logu,'(1x,a,es12.5,a)') "Time:     ", t_sc, " s"
+
   end if
-  write(logu,'(1x,a,i0)') "Hydro equations:  ", neqhydro
-  write(logu,'(1x,a,i0)') "MHD equations:    ", neqmhd
-  write(logu,'(1x,a,i0)') "Passive scalars:  ", npassive
-  write(logu,'(1x,a,i0)') "Total equations:  ", neqtot
-  write(logu,'(1x,a,f6.3)') "CFL parameter:  ", CFL
-  write(logu,'(1x,a,f6.3)') "Artificial viscosity:  ", visc_eta
-
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Gas Parameters"
-  write(logu,'(1x,a,f6.3)') "gamma = ", gamma
-  write(logu,'(1x,a,f6.3)') "mu0   = ", mu0
-  write(logu,'(1x,a,f6.3)') "mui   = ", mui
-  write(logu,'(1x,a,f8.1)') "ion_thres = ", ion_thres
-
-  ! Report unit scalings
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Unit scalings (1 code unit = ?)"
-  write(logu,'(1x,a,es12.5,a)') "Length:   ", l_sc, " cm"
-  write(logu,'(1x,a,es12.5,a)') "Density:  ", d_sc, " g cm^-3"
-  write(logu,'(1x,a,es12.5,a)') "Velocity: ", v_sc, " cm s^-1"
-  write(logu,'(1x,a,es12.5,a)') "Pressure: ", p_sc, " erg cm^-3"
-  write(logu,'(1x,a,es12.5,a)') "Time:     ", t_sc, " s"
-
   ! Radiative cooling
   write(logu,*) ""
   if (cooling_type.eq.COOL_NONE) then
-    write(logu,'(1x,a)') "> Radiative cooling is OFF"
+    if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is OFF"
   else
-    write(logu,'(1x,a)') "> Radiative cooling is ON"
-    write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
+    if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is ON"
+    if (verbosity > 0) write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
     if (cooling_type.eq.COOL_TABLE) then
       call loadcooldata ()
     else if (cooling_type.eq.COOL_TABLE_METAL) then
       if (npassive.lt.1) then
         write(logu,'(1x,a)') "At least one passive scalar is needed for &
-          &metallicity dependent cooling!"
+        &metallicity dependent cooling!"
         write(logu,'(1x,a)') "Set npassive to at least 1 in parameters.f90"
         write(logu,'(1x,a)') "***ABORTING***"
         call clean_abort(ERROR_NOT_ENOUGH_PASSIVES)
@@ -315,9 +324,11 @@ subroutine initmain ()
   end if
 
   ! Allocate memory and initialize big data arrays
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Allocating memory for big arrays ..."
-  write(logu,*) ""
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Allocating memory for big arrays ..."
+    write(logu,*) ""
+  end if
 
   ! Sanity check: abort if RAM will be insufficient to allocate big arrays
 !  totMem = neqtot*(nxmax-nxmin+1)*(nymax-nymin+1)*(nymax-nymin+1)*(nbmaxProc*3+6)
@@ -466,11 +477,11 @@ subroutine initmain ()
   nextout = 0
 
   ! =================================
-
-  write(logu,'(1x,a,a)') ""
-  write(logu,'(1x,a,a)') "> Performed initializations and allocated big arrays in ", nicetoc(mark)
-  write(logu,*) ""
-
+  if (verbosity > 3) then
+    write(logu,'(1x,a,a)') ""
+    write(logu,'(1x,a,a)') "> Performed initializations and allocated big arrays in ", nicetoc(mark)
+    write(logu,*) ""
+  end if
   ! Barrier
   call mpi_barrier (mpi_comm_world, ierr)
 
@@ -489,19 +500,22 @@ subroutine initflow ()
   use userconds
   implicit none
 
-  write(logu,*) ""
-  write(logu,*) "============================================"
-  write(logu,'(1x,a)') " Setting Initial Conditions  ..."
-  write(logu,*) "============================================"
-  write(logu,*) ""
-
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,*) "============================================"
+    write(logu,'(1x,a)') " Setting Initial Conditions  ..."
+    write(logu,*) "============================================"
+    write(logu,*) ""
+  end if
   ! IC (defined in user.f90)
   call setInitialCondition (U)
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "> Done setting ICs"
-  write(logu,*) ""
-  write(logu,'(1x,a)') "... and now for something completely different ..."
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "> Done setting ICs"
+    write(logu,*) ""
+    write(logu,'(1x,a)') "... and now for something completely different ..."
+  end if
 
 end subroutine initflow
 
@@ -524,14 +538,16 @@ subroutine warmstart ()
   character(4) :: noutstr
   character(3) :: rankstr
 
-  write(logu,*) ""
-  write(logu,*) "============================================"
-  write(logu,'(1x,a)') " Performing warm start ..."
-  write(logu,*) "============================================"
-  write(logu,*) ""
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,*) "============================================"
+    write(logu,'(1x,a)') " Performing warm start ..."
+    write(logu,*) "============================================"
+    write(logu,*) ""
+  end if
 
   ! Open state file
-  write(logu,'(1x,a,a,a)') "Reading state file '", trim(warm_file), "' ..."
+  if (verbosity > 0) write(logu,'(1x,a,a,a)') "Reading state file '", trim(warm_file), "' ..."
   unitin = 10 + rank
   open (unit=unitin, file=warm_file, status='old', iostat=istat)
   if (istat.ne.0) then
@@ -543,12 +559,13 @@ subroutine warmstart ()
   ! Read simulation state variables and datadir
   read(unitin,'(es22.15,i8,i5)') time, it, noutput
   read(unitin,'(a)') datadir_old
-
-  write(logu,*) ""
-  write(logu,'(1x,a,i0,a)') "> Restarting simulation from output ", noutput, " ..."
-  write(logu,'(1x,a,i0)') "Last iteration = ", it
-  write(logu,'(1x,a,es22.15)') "Current time = ", time
-  write(logu,*) ""
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,'(1x,a,i0,a)') "> Restarting simulation from output ", noutput, " ..."
+    write(logu,'(1x,a,i0)') "Last iteration = ", it
+    write(logu,'(1x,a,es22.15)') "Current time = ", time
+    write(logu,*) ""
+  end if
 
   time = time/t_sc
   nextout = noutput + 1
@@ -570,7 +587,7 @@ subroutine warmstart ()
   write(blocksfile,'(a)') trim(datadir_old) // trim(slash) // trim(blocksfile) // ".bin"
 
   ! Open data file
-  write(logu,'(1x,a,a,a)') "Reading data file '", trim(blocksfile), "' ..."
+  if (verbosity > 2) write(logu,'(1x,a,a,a)') "Reading data file '", trim(blocksfile), "' ..."
   unitin = 10 + rank
   open (unit=unitin, file=blocksfile, status='old', access='stream', iostat=istat)
   if (istat.ne.0) then
@@ -586,7 +603,7 @@ subroutine warmstart ()
   read(unitin) nbLocal
   do nb=1,nbLocal
     read(unitin) localBlocks(nb)
-    write(logu,'(1x,a,i0,a)') "Loading block ", localBlocks(nb), " ..."
+    if (verbosity > 2) write(logu,'(1x,a,i0,a)') "Loading block ", localBlocks(nb), " ..."
     read(unitin) U(nb,:,1:ncells_x,1:ncells_y,1:ncells_z)
     nblocks = nblocks + 1
   end do
@@ -624,7 +641,7 @@ subroutine basegrid ()
   integer :: nb, bID, ilev, x, y, z, mark
   real :: smallsize
 
-  call tic(mark)
+  if (verbosity > 3) call tic(mark)
 
   write(logu,*) ""
   write(logu,*) "============================================"
@@ -684,19 +701,20 @@ subroutine basegrid ()
     write(logu,*)
     write(logu,'(a)') "ERROR: The physical size of the simulation box has"//&
       " a different aspect ratio than the requested number of cells!"
-    write(logu,'(a,f4.1,a,f4.1,a,f4.1)') "Physical size aspect ratio: ",&
+     write(logu,'(a,f4.1,a,f4.1,a,f4.1)') "Physical size aspect ratio: ",&
       xphystot/smallsize, " : ", yphystot/smallsize, " : ", zphystot/smallsize
     write(logu,'(a,i3,a,i3,a,i3)') "Cell number aspect ratio:   ",&
       maxcells_x/smalldim, " : ", maxcells_y/smalldim, " : ", maxcells_z/smalldim
     write(logu,'(a)') "> Modify parameters.f90"
     call clean_abort (ERROR_BASEGRID_BAD_ASPECT)
   else
-    write(logu,'(1x,a,i2,a,i2,a,i2)') "Grid geometry (root blocks): ", &
+    if (verbosity > 0) then
+      write(logu,'(1x,a,i2,a,i2,a,i2)') "Grid geometry (root blocks): ", &
       nbrootx, " x ", nbrooty, " x ", nbrootz
-    write(logu,'(1x,a,i3)') "Number of root blocks: ", nbrootx*nbrooty*nbrootz
-    write(logu,'(1x,a,i2)') "Number of refinement levels: ", maxlev
+      write(logu,'(1x,a,i3)') "Number of root blocks: ", nbrootx*nbrooty*nbrootz
+      write(logu,'(1x,a,i2)') "Number of refinement levels: ", maxlev
+    end if
   end if
-
   ! Allocate and initialize grid spacing at each level (code units)
   allocate( dx(maxlev) )
   allocate( dy(maxlev) )
@@ -742,7 +760,7 @@ subroutine basegrid ()
   if (.not.dowarm) then
 
     ! Activate root blocks and initialize block registry
-    write(logu,'(1x,a)') "> Creating root blocks ..."
+    if (verbosity > 2) write(logu,'(1x,a)') "> Creating root blocks ..."
 
     ! Calculate bID of root blocks and register them in master's block list
     if (rank.eq.master) then
@@ -770,17 +788,19 @@ subroutine basegrid ()
 
   else
 
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Skipping root block creation (warm start)"
+    if (verbosity > 2) write(logu,*) ""
+    if (verbosity > 2) write(logu,'(1x,a)') "> Skipping root block creation (warm start)"
 
   end if
 
   ! ==========================
 
-  write(logu,*) ""
-  write(logu,'(1x,a,a)') "> Created base grid in ", nicetoc(mark)
-  write(logu,*) ""
-
+  if (verbosity > 3) then
+    write(logu,*) ""
+    write(logu,'(1x,a,a)') "> Created base grid in ", nicetoc(mark)
+    write(logu,*) ""
+  end if
+  
 end subroutine basegrid
 
 !===============================================================================
