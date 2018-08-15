@@ -97,7 +97,7 @@ subroutine normalBoundary (depth, uvars)
   ! Debugging flag
   verbose = .false.
 
-  call tic(mark)
+  if (verbosity > 3) call tic(mark)
 
   ! For all six directions, where direction indicates which ghost cell layer
   ! of the destination block if being set
