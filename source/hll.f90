@@ -182,7 +182,7 @@ subroutine primfhll (pL, pR, ff)
   real, intent(in) :: pR(neqtot)
   real, intent(out) :: ff(neqtot)
 
-  real :: sl, sr, sst
+  real :: sl, sr
   real :: uL(neqtot), uR(neqtot)
   real :: fL(neqtot), fR(neqtot)
 
