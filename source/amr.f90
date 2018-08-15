@@ -1389,7 +1389,7 @@ subroutine refineZone (zone, z_level)
     end if
 
     ! Check proximity criterion for all blocks in this level and coarser levels
-    write(logu,'(1x,a)') "Doing proximity checks ..."
+    if (verbosity > 2) write(logu,'(1x,a)') "Doing proximity checks ..."
     call checkProximity(ilev)
 
     if (verbose) then
