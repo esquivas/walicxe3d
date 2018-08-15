@@ -51,16 +51,17 @@ subroutine hydroSolver ()
   integer :: mark, mark1
   real :: dt_new
 
-  call tic(mark)
-  write(logu,*) ""
-  write(logu,'(1x,a)') "============================================"
-  write(logu,'(1x,a)') " Integrating hydrodynamical equations ..."
-  write(logu,'(1x,a)') "============================================"
-  write(logu,*) ""
-
+  if (verbosity > 3) call tic(mark)
+  if (verbosity > 2) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "============================================"
+    write(logu,'(1x,a)') " Integrating hydrodynamical equations ..."
+    write(logu,'(1x,a)') "============================================"
+    write(logu,*) ""
+  endif
   ! Compute global timestep
-  call tic(mark1)
-  write(logu,'(1x,a)') "> Calculating timestep ..."
+  if (verbosity > 3) call tic(mark1)
+  if (verbosity > 1) write(logu,'(1x,a)') "> Calculating timestep ..."
   call getTimestep (dt_new)
   if ((dt.gt.0.0).and.(abs(dt-dt_new)/dt.gt.50)) then
     write(logu,'(a)') "Abnormal timestep change!"
@@ -70,9 +71,11 @@ subroutine hydroSolver ()
     call clean_abort(ERROR_TIMESTEP)
   end if
   dt = dt_new
-  write(logu,'(1x,a,es12.5,a)') "dt= ", dt, " code units"
-  write(logu,'(1x,a,f12.5,a)') "dt= ", dt*t_sc/YR, " yr"
-  write(logu,'(1x,a,a)') "Timestep calculated in ", nicetoc(mark1)
+  if (verbosity > 0) then
+    write(logu,'(1x,a,es12.5,a)') "dt= ", dt, " code units"
+    write(logu,'(1x,a,f12.5,a)') "dt= ", dt*t_sc/YR, " yr"
+  endif
+  if (verbosity > 3) write(logu,'(1x,a,a)') "Timestep calculated in ", nicetoc(mark1)
 
   ! Call appropriate numerical solver
   ! Once this routine returns, the UPs are expected to have correct
@@ -98,17 +101,17 @@ subroutine hydroSolver ()
 
   end select
 
-  write(logu,*) ""
-  write(logu,'(1x,a,a)') "Integrator (total)=", nicetoc(mark1)
+  if (verbosity > 3) write(logu,*) ""
+  if (verbosity > 3) write(logu,'(1x,a,a)') "Integrator (total)=", nicetoc(mark1)
 
   ! Step hydro variables
-  call tic(mark1)
+  if (verbosity > 3) call tic(mark1)
   call doStep()
-  write(logu,*) "Stepping=", nicetoc(mark1)
+  if (verbosity > 3) write(logu,*) "Stepping=", nicetoc(mark1)
 
   ! Done
-  write(logu,*) ""
-  write(logu,'(1x,a,a)') "> Numerical integration completed in ", nicetoc(mark)
+  if (verbosity > 3) write(logu,*) ""
+  if (verbosity > 3) write(logu,'(1x,a,a)') "> Numerical integration completed in ", nicetoc(mark)
 
 end subroutine hydroSolver
 
