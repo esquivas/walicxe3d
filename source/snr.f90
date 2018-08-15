@@ -106,9 +106,10 @@ contains
     real :: zone(6)
     integer :: zlevel
 
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Imposing supernova remnant ..."
-
+    if (verbosity > 0) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Imposing supernova remnant ..."
+    end if
     ! Unpack SNR parameters
     xc   = snr_params%xc
     yc   = snr_params%yc
@@ -131,15 +132,16 @@ contains
     Vmax = sqrt(10.0/3.0*Ek/MSN)     ! for linear v(r) profile
     Pres = (1.0/CV)*Et/(4.0/3.0*PI*RSN**3)
 
-    write(logu,'(1x,a)') "> SNR parameters (cgs):"
-    write(logu,'(1x,a,es12.5)') "Ekin = ", Ek
-    write(logu,'(1x,a,es12.5)') "Eter = ", Et
-    write(logu,'(1x,a,es12.5)') "Etot = ", Ek+Et
-    write(logu,'(1x,a,es12.5)') "Dens = ", Dens
-    write(logu,'(1x,a,es12.5)') "Vmax = ", Vmax
-    write(logu,'(1x,a,es12.5)') "Pres = ", Pres
-    write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
-
+    if (verbosity > 0) then
+      write(logu,'(1x,a)') "> SNR parameters (cgs):"
+      write(logu,'(1x,a,es12.5)') "Ekin = ", Ek
+      write(logu,'(1x,a,es12.5)') "Eter = ", Et
+      write(logu,'(1x,a,es12.5)') "Etot = ", Ek+Et
+      write(logu,'(1x,a,es12.5)') "Dens = ", Dens
+      write(logu,'(1x,a,es12.5)') "Vmax = ", Vmax
+      write(logu,'(1x,a,es12.5)') "Pres = ", Pres
+      write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
+    end if
     ! A zone around the SNR will be refined to provide adequate resolution
     zone(1) = xc - RSN
     zone(2) = xc + RSN
@@ -264,8 +266,10 @@ contains
     real :: zone(6)
     integer :: zlevel
 
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Imposing Jun & Norman supernova remnant ..."
+    if (verbosity > 0) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Imposing Jun & Norman supernova remnant ..."
+    end if
 
     ! Unpack SNR parameters
     xc = snr_params%xc
@@ -295,18 +299,20 @@ contains
            2.0*PI*rho0*RSN**3*(1.0-(RSN/rc)**(n-5.0))/(5.0-n))**(-0.5)
     pres = (1.0/CV)*Eth/(4.0/3.0*PI*RSN**3)
 
-    write(logu,'(1x,a)') "> SNR parameters (cgs):"
-    write(logu,'(1x,a,es12.5)') "Ek   = ", Ek
-    write(logu,'(1x,a,es12.5)') "Eth  = ", Eth
-    write(logu,'(1x,a,es12.5)') "Etot = ", Ek+Eth
-    write(logu,'(1x,a,es12.5)') "Core density = ", rhoc
-    write(logu,'(1x,a,es12.5)') "Core radius  = ", rc
-    write(logu,'(1x,a,es12.5)') "Outer density  = ", rho0
-    write(logu,'(1x,a,es12.5)') "4*rho_ism      = ", 4*rho_env
-    write(logu,'(1x,a,es12.5)') "Outer velocity = ", vmax
-    write(logu,'(1x,a,es12.5)') "Pres = ", pres
-    write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
-
+    if (verbosity > 0) then
+      write(logu,'(1x,a)') "> SNR parameters (cgs):"
+      write(logu,'(1x,a,es12.5)') "Ek   = ", Ek
+      write(logu,'(1x,a,es12.5)') "Eth  = ", Eth
+      write(logu,'(1x,a,es12.5)') "Etot = ", Ek+Eth
+      write(logu,'(1x,a,es12.5)') "Core density = ", rhoc
+      write(logu,'(1x,a,es12.5)') "Core radius  = ", rc
+      write(logu,'(1x,a,es12.5)') "Outer density  = ", rho0
+      write(logu,'(1x,a,es12.5)') "4*rho_ism      = ", 4*rho_env
+      write(logu,'(1x,a,es12.5)') "Outer velocity = ", vmax
+      write(logu,'(1x,a,es12.5)') "Pres = ", pres
+      write(logu,'(1x,a,es12.5,1x,es12.5,1x,es12.5)') "Location: ", xc, yc, zc
+    end if
+    
     ! A zone around the SNR will be refined to provide adequate resolution
     zone(1) = xc - RSN
     zone(2) = xc + RSN
