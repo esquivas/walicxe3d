@@ -86,7 +86,7 @@ contains
 
     use constants,  only : AMU, KB, COOL_TABLE_METAL
     use globals,    only : localBlocks, logu
-    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin, nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas
+    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin, nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas, verbosity
     use hydro_core, only : prim2flow
 
     implicit none
@@ -100,7 +100,7 @@ contains
 #endif
     real    :: primit(neqtot), flowvars(neqtot)
 
-    write(logu,'(1x,a)') "> Imposing uniform background medium ..."
+        if (verbosity > 0) write(logu,'(1x,a)') "> Imposing uniform background medium ..."
 
     !  unpack ISM paraeters
     mu    = ism_params%mu
@@ -158,19 +158,20 @@ contains
 
       end if
     end do
-
-    write(logu,'(1x,a)') "Ambient medium parameters:"
-    write(logu,'(1x,a,es12.5,a,es12.5,a)') "Dens= ", dens, " g cm^-3   (", dens/d_sc, " code units)"
-    write(logu,'(1x,a,es12.5,a,es12.5,a)') "Pres= ", pres, " dyn cm^-2 (", pres/p_sc, ")"
-    write(logu,'(1x,a,es12.5,a)') "Temp= ", temp, " K         (no code units)"
-    write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velx= ", vx, " cm s^-1   (", vx/v_sc, ")"
-    write(logu,'(1x,a,es12.5,a,es12.5,a)') "Vely= ", vy, " cm s^-1   (", vy/v_sc, ")"
-    write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velz= ", vz, " cm s^-1   (", vz/v_sc, ")"
+    if (verbosity > 0) then
+      write(logu,'(1x,a)') "Ambient medium parameters:"
+      write(logu,'(1x,a,es12.5,a,es12.5,a)') "Dens= ", dens, " g cm^-3   (", dens/d_sc, " code units)"
+      write(logu,'(1x,a,es12.5,a,es12.5,a)') "Pres= ", pres, " dyn cm^-2 (", pres/p_sc, ")"
+      write(logu,'(1x,a,es12.5,a)') "Temp= ", temp, " K         (no code units)"
+      write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velx= ", vx, " cm s^-1   (", vx/v_sc, ")"
+      write(logu,'(1x,a,es12.5,a,es12.5,a)') "Vely= ", vy, " cm s^-1   (", vy/v_sc, ")"
+      write(logu,'(1x,a,es12.5,a,es12.5,a)') "Velz= ", vz, " cm s^-1   (", vz/v_sc, ")"
 #ifdef BFIELD
-    write(logu,'(1x,a,es12.5,a)') "Bx= ", bx, " G"
-    write(logu,'(1x,a,es12.5,a)') "By= ", by, " G"
-    write(logu,'(1x,a,es12.5,a)') "Bz= ", bz, " G"
+      write(logu,'(1x,a,es12.5,a)') "Bx= ", bx, " G"
+      write(logu,'(1x,a,es12.5,a)') "By= ", by, " G"
+      write(logu,'(1x,a,es12.5,a)') "Bz= ", bz, " G"
 #endif
+  end if
 
 end subroutine impose_uniform_ism
 
