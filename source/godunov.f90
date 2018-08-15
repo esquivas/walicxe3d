@@ -69,11 +69,11 @@ subroutine Godunov (order)
   end if
 
   ! Exchange 1-deep boundaries to fill ghost cells (all blocks)
-  call tic(mark)
+    if (verbosity > 3) call tic(mark)
   write(logu,*) ""
-  write(logu,'(1x,a)') "> Exchanging 1-deep boundary layers ..."
+    if (verbosity > 1) write(logu,'(1x,a)') "> Exchanging 1-deep boundary layers ..."
   call boundary (1, U)
-  write(logu,*) "Boundaries exchanged in", nicetoc(mark)
+  if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
   ! Update primitives in ghost cells
   call calcPrimsAll (U, PRIM, CELLS_GHOST)
@@ -83,9 +83,9 @@ subroutine Godunov (order)
   call tic(mark)
   write(logu,*) ""
   if (order.eq.1) then
-    write(logu,'(1x,a)') "> Integrating blocks ..."
+      if (verbosity > 1) write(logu,'(1x,a)') "> Integrating blocks ..."
   else if (order.eq.2) then
-    write(logu,'(1x,a)') "> Integrating blocks (1st order half step) ..."
+      if (verbosity > 1) write(logu,'(1x,a)') "> Integrating blocks (1st order half step) ..."
   end if
 
   do bIndx=1,nbMaxProc
@@ -104,7 +104,7 @@ subroutine Godunov (order)
         case (SOLVER_HLLC)
           call HLLCfluxes (bIndx, 1)
 
-        case (SOLVER_HLLC)
+        case (SOLVER_HLLE)
           call HLLEfluxes (bIndx, 1)
 
       end select
@@ -117,7 +117,7 @@ subroutine Godunov (order)
     end if
   end do
 
-  write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", nicetoc(mark)
+    if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", nicetoc(mark)
 
   ! -----------------------------------
   ! 2nd-order full timestep (skipped in 1st-order schemes)
@@ -125,20 +125,24 @@ subroutine Godunov (order)
   if (order.eq.2) then
 
     ! Exchange 2-deep boundaries to fill ghost cells (all blocks)
-    call tic(mark)
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Exchanging 2-deep boundary layers ..."
-    call boundary (2, UP)
-    write(logu,*) "Boundaries exchanged in", nicetoc(mark)
+    if (verbosity > 3) call tic(mark)
+    if (verbosity > 1) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Exchanging 2-deep boundary layers ..."
+      call boundary (2, UP)
+    end if
+      if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
     ! Update primitives in ghost cells
     call calcPrimsAll (UP, PRIM, CELLS_ALL)
 
     ! Second-order integration of all local blocks
     bcount = 0
-    call tic(mark)
-    write(logu,*) ""
-    write(logu,'(1x,a)') "> Integrating blocks (2nd order full step) ..."
+    if (verbosity > 3) call tic(mark)
+    if (verbosity > 2) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Integrating blocks (2nd order full step) ..."
+    endif
     do bIndx=1,nbMaxProc
 
       bID = localBlocks(bIndx)
@@ -153,7 +157,7 @@ subroutine Godunov (order)
           case (SOLVER_HLLC)
             call HLLCfluxes (bIndx, 2)
 
-          case (SOLVER_HLLC)
+          case (SOLVER_HLLE)
             call HLLEfluxes (bIndx, 2)
 
         end select
@@ -169,7 +173,7 @@ subroutine Godunov (order)
       end if
     end do
 
-    write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", &
+      if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", &
     nicetoc(mark)
 
   end if
@@ -187,6 +191,8 @@ subroutine upwindStep (locIndx, dtp)
 
   use parameters
   use globals
+  use clean_quit, only : clean_abort
+  use sources,    only : divbcorr_8w_source
   use amr, only : meshlevel
   implicit none
 
@@ -196,6 +202,7 @@ subroutine upwindStep (locIndx, dtp)
   integer :: i, j, k, bID, lev
   integer :: ieq   ! DEBUG
   real :: dtdx, dtdy, dtdz
+  real :: s(neqtot)
 
   bID = localBlocks(locIndx)
   call meshlevel (bID, lev)
@@ -213,29 +220,42 @@ subroutine upwindStep (locIndx, dtp)
 do ieq=1,neqtot
 if (FC(ieq,i-1,j,k).ne.FC(ieq,i-1,j,k)) then
   write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i-1, j, k
+  call clean_abort(ERROR_GENERIC)
 end if
 if (FC(ieq,i,j,k).ne.FC(ieq,i,j,k)) then
   write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i, j, k
+  call clean_abort(ERROR_GENERIC)
 end if
 if (GC(ieq,i,j-1,k).ne.GC(ieq,i,j-1,k)) then
   write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j-1, k
+  call clean_abort(ERROR_GENERIC)
 end if
 if (GC(ieq,i,j,k).ne.GC(ieq,i,j,k)) then
   write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j, k
+  call clean_abort(ERROR_GENERIC)
 end if
 if (HC(ieq,i,j,k-1).ne.HC(ieq,i,j,k-1)) then
   write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k-1
+  call clean_abort(ERROR_GENERIC)
 end if
 if (HC(ieq,i,j,k).ne.HC(ieq,i,j,k)) then
   write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k
+  call clean_abort(ERROR_GENERIC)
 end if
 end do
 ! DEBUG
+        s(:) = 0.
         UP(locIndx,:,i,j,k)   &
           = U(locIndx,:,i,j,k)   &
           + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))   &
           + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))   &
           + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
+
+        !if (eight_wave) then
+        !  call divbcorr_8w_source(locIndx,i,j,k,s)
+        !  up(locIndx,:,i,j,k)= up(locIndx,:,i,j,k)+dtp*s(:)
+        !end if
+
       end do
     end do
   end do
