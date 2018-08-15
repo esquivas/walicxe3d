@@ -180,6 +180,10 @@ contains
       solvername = 'HLL Riemann solver'
     else if (solver.eq.SOLVER_HLLC) then
       solvername = 'HLLC Riemann solver'
+    else if (solver.eq.SOLVER_HLLE) then
+      solvername = 'HLLE Riemann solver'
+    else if (solver.eq.SOLVER_HLLD) then
+      solvername = 'HLLD Riemann solver'
     else
       solvername = 'Unknown'
     end if
