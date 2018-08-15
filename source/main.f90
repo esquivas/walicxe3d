@@ -79,7 +79,7 @@ program Walicxe3D
 
     it = it + 1
 
-    if (verbosity > 0) then
+    if (verbosity > 2) then
       write(logu,'(a)') "================================================================================"
       write(logu,'(1x,a,i0)') "Starting Iteration " , it
       if (verbosity > 3) write(logu,'(1x,a)') stamp()
