@@ -184,7 +184,7 @@ subroutine primfhlle (pL, pR, ff)
   real, intent(in) :: pR(neqtot)
   real, intent(out) :: ff(neqtot)
 
-  real :: sl, sr, sst
+  real :: sl, sr
   real :: uL(neqtot), uR(neqtot)
   real :: fL(neqtot), fR(neqtot)
 
@@ -224,7 +224,7 @@ end subroutine primfhlle
 !> @param sr Wavespeed estimate for "right" moving wave
 subroutine wavespeedHLLE (primL, primR, sl, sr)
 
-  use parameters
+  use parameters, only : neqtot
   use hydro_core, only : cfastX
   implicit none
 
@@ -232,6 +232,7 @@ subroutine wavespeedHLLE (primL, primR, sl, sr)
   real, intent(in) :: primR(neqtot)
   real, intent(out) :: sl
   real, intent(out) :: sr
+  real              :: cfL, cfR
 
   ! Sound speeds
   call cfastX(primL,cfL)
