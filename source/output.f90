@@ -50,11 +50,13 @@ subroutine writeOutput (noutput)
   integer :: mark, startmark, p
 
   if (verbosity > 0) then
-    write(logu,*) ""
-    write(logu,*) "============================================"
-    write(logu,'(1x,a)') " Writing data ouput ..."
-    write(logu,*) "============================================"
-    write(logu,'(1x,a)') stamp()
+    if (logged .or. rank == master) then
+      write(logu,*) ""
+      write(logu,*) "============================================"
+      write(logu,'(1x,a)') " Writing data ouput ..."
+      write(logu,*) "============================================"
+      write(logu,'(1x,a)') stamp()
+    end if
   end if
 
   if (output_mode.eq.OUT_SIMULT) then
@@ -91,7 +93,7 @@ subroutine writeOutput (noutput)
     if (rank.eq.p) then
 
         if (verbosity > 3) call tic(mark)
-        if (verbosity > 0) then
+        if (verbosity > 1) then
           write(logu,'(1x,a,i0,a)') "> Writing output ", noutput, " to disk ..."
           write(logu,*) ""
         end if
@@ -201,7 +203,7 @@ subroutine writeBin (noutput)
   close(unitout)
   if (verbosity > 2)  write(logu,'(1x,a,i0,a)') "Dumping ", nblocks, " local blocks"
   if (verbosity > 2) write(logu,'(1x,a,a)') "Succesfully wrote data file."
-  write(logu,*) ""
+  if (logged.or. (rank==master)) write(logu,*) ""
 
 end subroutine writeBin
 
