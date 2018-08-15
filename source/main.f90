@@ -62,10 +62,10 @@ program Walicxe3D
   end if
 
   ! Distribute base load among all processors
-  call loadBalance ()
+  !call loadBalance ()
 
   ! Update primitives
-  call updatePrims ()
+  !call updatePrims ()
 
   ! Write initial condition to disk
   if (nextout.eq.0) then
@@ -74,15 +74,17 @@ program Walicxe3D
   end if
 
   ! Main Loop
-!  do while(.false.)
-  do while (time.le.tfin/t_sc)
+  !do while(.false.)
+  do while (time <= tfin/t_sc)
 
     it = it + 1
 
-    write(logu,'(a)') "================================================================================"
-    write(logu,'(1x,a,i0)') "Starting Iteration " , it
-    write(logu,'(1x,a)') stamp()
-    write(logu,'(a)') "================================================================================"
+    if (verbosity > 0) then
+      write(logu,'(a)') "================================================================================"
+      write(logu,'(1x,a,i0)') "Starting Iteration " , it
+      if (verbosity > 3) write(logu,'(1x,a)') stamp()
+      write(logu,'(a)') "================================================================================"
+    end if
 
     ! Hydro Solver
     call hydroSolver ()
@@ -114,11 +116,13 @@ program Walicxe3D
   end do
 
   ! Deallocate globals and terminate execution
-  write(logu,*) ""
-  write(logu,'(a)') "================================================================================"
-  write(logu,'(a)') STAMP()
-  write(logu,'(a)') 'Execution complete!'
-  write(logu,'(a,a)') 'Total elapsed time: ', nicetoc(start_mark)
+  if (verbosity > 0) then
+    write(logu,*) ""
+    write(logu,'(a)') "================================================================================"
+    write(logu,'(a)') STAMP()
+    write(logu,'(a)') 'Execution complete!'
+    write(logu,'(a,a)') 'Total elapsed time: ', nicetoc(start_mark)
+  end if
   call deinit()
 
 end program Walicxe3D
