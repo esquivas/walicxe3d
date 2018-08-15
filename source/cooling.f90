@@ -46,13 +46,14 @@ subroutine cooling
 
   if (cooling_type.ne.COOL_NONE) then
 
-    call tic(mark)
-    write(logu,*) ""
-    write(logu,'(1x,a)') "============================================"
-    write(logu,'(1x,a)') " Applying Radiative Cooling ..."
-    write(logu,'(1x,a)') "============================================"
-    write(logu,*) ""
-
+    if (verbosity > 3) call tic(mark)
+    if (verbosity > 1) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "============================================"
+      write(logu,'(1x,a)') " Applying Radiative Cooling ..."
+      write(logu,'(1x,a)') "============================================"
+      write(logu,*) ""
+    end if
     select case (cooling_type)
 
     case (COOL_TABLE, COOL_TABLE_METAL)
@@ -74,7 +75,7 @@ subroutine cooling
 
     end select
 
-    write(logu,'(1x,a,a)') "> Cooling applied in ", nicetoc(mark)
+    if (verbosity > 3) write(logu,'(1x,a,a)') "> Cooling applied in ", nicetoc(mark)
 
   end if
 
@@ -108,7 +109,7 @@ subroutine loadcooldata ()
   ! Master loads cooling table from file
   if (rank.eq.master) then
 
-    write(logu,'(2x,a)') "Loading cooling data from file ..."
+    if (verbosity > 1) write(logu,'(2x,a)') "Loading cooling data from file ..."
     open (unit=99, file=cooling_file, status='old', iostat=istat)
     if (istat.ne.0) then
       write(logu,'(a,a,a)') "Could not open the file ", trim(cooling_file), " !"
@@ -133,11 +134,11 @@ subroutine loadcooldata ()
   ! Broadcast cooling data to all processes
   call mpi_bcast(nptsT, 1, mpi_integer, 0, mpi_comm_world, ierr)
   if (rank.ne.master) then
-    write (logu,'(2x,a)') "Receiving cooling data from master process ..."
+    if (verbosity > 2) write (logu,'(2x,a)') "Receiving cooling data from master process ..."
     allocate (cooltable(2,nptsT))
   end if
   call mpi_bcast(cooltable, nptsT*2, mpi_real_kind, 0, mpi_comm_world, ierr)
-  write(logu,'(2x,a,i0,a)') "Loaded ", nptsT, " cooling coefficients."
+  if (verbosity > 1) write(logu,'(2x,a,i0,a)') "Loaded ", nptsT, " cooling coefficients."
 
   ! Set global vars for minimum and maximum temperatures
   ! Note that the temperatures are logarithmic
@@ -175,7 +176,7 @@ subroutine loadcooldata_metal ()
   ! Master loads cooling table from file
   if (rank.eq.master) then
 
-    write(logu,'(2x,a)') "Loading cooling data from file ..."
+    if (verbosity > 1) write(logu,'(2x,a)') "Loading cooling data from file ..."
     open (unit=99, file=cooling_file, status='old', iostat=istat)
     if (istat.ne.0) then
       write(logu,'(a,a,a)') "Could not open the file ", trim(cooling_file), " !"
@@ -209,12 +210,12 @@ subroutine loadcooldata_metal ()
   call mpi_bcast(nptsT, 1, mpi_integer, 0, mpi_comm_world, ierr)
   call mpi_bcast(nptsZ, 1, mpi_integer, 0, mpi_comm_world, ierr)
   if (rank.ne.master) then
-    write (logu,'(2x,a)') "Receiving cooling data from master process ..."
+    if (verbosity > 2) write (logu,'(2x,a)') "Receiving cooling data from master process ..."
     allocate ( cooltable(nptsT+1,nptsZ+1) )
   end if
   call mpi_bcast(cooltable, (nptsT+1)*(nptsZ+1), mpi_real_kind, 0, &
     mpi_comm_world, ierr)
-  write(logu,'(2x,a,i0,a,i0,a,i0,a)') "Loaded ", nptsT*nptsZ, &
+  if (verbosity > 1) write(logu,'(2x,a,i0,a,i0,a,i0,a)') "Loaded ", nptsT*nptsZ, &
     " cooling coefficients for ", nptsT, " temperature values and ", &
     nptsZ, " metallicity values."
 
