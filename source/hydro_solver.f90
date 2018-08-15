@@ -71,7 +71,7 @@ subroutine hydroSolver ()
     call clean_abort(ERROR_TIMESTEP)
   end if
   dt = dt_new
-  if (verbosity > 0) then
+  if (verbosity > 2) then
     write(logu,'(1x,a,es12.5,a)') "dt= ", dt, " code units"
     write(logu,'(1x,a,f12.5,a)') "dt= ", dt*t_sc/YR, " yr"
   endif
