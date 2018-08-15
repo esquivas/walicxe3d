@@ -53,19 +53,19 @@ subroutine admesh ()
   integer :: localFlags (nbMaxProc)
   integer :: mark
   logical :: test(nbMaxGlobal)  ! DEBUG
-
   logical :: verbose = .false.
 
-  call tic(mark)
-  write(logu,*) ""
-  write(logu,'(1x,a)') "============================================"
-  write(logu,'(1x,a)') " Updating Adaptive Mesh ..."
-  write(logu,'(1x,a)') "============================================"
-  write(logu,*) ""
-
+  if (verbosity > 3) call tic(mark)
+  if (verbosity > 1) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "============================================"
+    write(logu,'(1x,a)') " Updating Adaptive Mesh ..."
+    write(logu,'(1x,a)') "============================================"
+    write(logu,*) ""
+  end if
   ! Each process inspects its own active blocks and flags those that meet
   ! the physical criteria for refinement or coarsening
-  write(logu,'(1x,a)') "> Flagging blocks due to physical gradients ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "> Flagging blocks due to physical gradients ..."
   refcount = 0
   crscount = 0
   localFlags(:) = FLAG_NONE
@@ -81,9 +81,10 @@ subroutine admesh ()
       end if
     end if
   end do
-
-  write(logu,'(1x,i8,a)') refcount, " local blocks marked for refinement"
-  write(logu,'(1x,i8,a)') crscount, " local blocks marked for coarsening"
+  if (verbosity > 2)  then
+    write(logu,'(1x,i8,a)') refcount, " local blocks marked for refinement"
+    write(logu,'(1x,i8,a)') crscount, " local blocks marked for coarsening"
+  end if
 
   ! Syncronize refinement flags
   call mpi_allgather (localFlags, nbMaxProc, mpi_integer, &
@@ -100,16 +101,16 @@ subroutine admesh ()
   ! a) flag aditional blocks for refinement, and/or
   ! b) inhibit block coarsening
   ! when proximity to a block marked for refinement requires such change
-  write(logu,'(1x,a)') "> Checking proximity criterion ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "> Checking proximity criterion ..."
   call checkProximity (maxlev-1)
 
   ! Refine local blocks marked for refinement
-  write(logu,'(1x,a)') "> Refining local blocks ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "> Refining local blocks ..."
   do nb=nbmin,nbmax
     bID = globalBlocks(nb)
     flag = refineFlags(nb)
     if (flag.eq.FLAG_REFINE) then
-      write(logu,'(1x,a,i8)') "Refining block", bID
+        if (verbosity > 1) write(logu,'(1x,a,i8)') "Refining block", bID
       call refineBlock(bID)
     end if
   end do
@@ -118,14 +119,16 @@ subroutine admesh ()
   call syncBlockLists ()
 
   ! Do block coarsening
-  write(logu,'(1x,a)') "> Coarsening block families ..."
+  if (verbosity > 2) write(logu,'(1x,a)') "> Coarsening block families ..."
   call coarseBlocks ()
 
   ! Update global block list
   call syncBlockLists ()
 
-  write(logu,*) ""
-  write(logu,'(1x,a,a)') "> Mesh refined/coarsened in ", nicetoc(mark)
+  if (verbosity > 3) then
+    write(logu,*) ""
+    write(logu,'(1x,a,a)') "> Mesh refined/coarsened in ", nicetoc(mark)
+  end if
 
 end subroutine admesh
 
@@ -297,9 +300,9 @@ subroutine refineBlock (fatherID)
   ! TODO: THIS CHECK MIGHT BE ELIMINATED FOR EFFICIENCY
   call find (fatherID, localBlocks, nbMaxProc, fatherIndex)
   if (fatherIndex.eq.-1) then
-    write(logu,*) ""
-    write(logu,'(a,i5,a)') "Block ", fatherID, " is not a local block; can't refine it!"
-    write(logu,'(1x,a)') "***ABORTING***"
+      write(logu,*) ""
+      write(logu,'(a,i5,a)') "Block ", fatherID, " is not a local block; can't refine it!"
+      write(logu,'(1x,a)') "***ABORTING***"
     call clean_abort (ERROR_LOCAL_BID_NOT_FOUND)
   end if
 
@@ -400,9 +403,10 @@ subroutine syncBlockLists()
 
 #else
 
-  write(logu,*) ""
-  write(logu,'(1x,a)') "Synchronizing block lists ..."
-
+  if (verbosity > 2) then
+    write(logu,*) ""
+    write(logu,'(1x,a)') "Synchronizing block lists ..."
+  end if
   ! Reset global block registry
   globalBlocks(:) = -1
 
@@ -418,7 +422,7 @@ subroutine syncBlockLists()
     end if
   end do
 
-  write(logu,'(1x,a,i0,a)') "There are ", nbActive, " active blocks globally."
+  if (verbosity > 2) write(logu,'(1x,a,i0,a)') "There are ", nbActive, " active blocks globally."
 
   ! Everybody stops here
   call mpi_barrier (mpi_comm_world, ierr)
@@ -1300,12 +1304,13 @@ subroutine refineZone (zone, z_level)
   z_bottom = zone(5)
   z_top = zone(6)
 
-  write(logu,*) ""
-  write(logu,'(1x,a,i0)') "> Refining zone to level ", z_level
-  write(logu,'(1x,a,es12.5,1x,es12.5)') "x-range: ", z_left, z_right
-  write(logu,'(1x,a,es12.5,1x,es12.5)') "y-range: ", z_front, z_back
-  write(logu,'(1x,a,es12.5,1x,es12.5)') "z-range: ", z_bottom, z_top
-
+  if (verbosity > 2) then
+    write(logu,*) ""
+    write(logu,'(1x,a,i0)') "> Refining zone to level ", z_level
+    write(logu,'(1x,a,es12.5,1x,es12.5)') "x-range: ", z_left, z_right
+    write(logu,'(1x,a,es12.5,1x,es12.5)') "y-range: ", z_front, z_back
+    write(logu,'(1x,a,es12.5,1x,es12.5)') "z-range: ", z_bottom, z_top
+  end if
   ! For all refinement levels up to the requestes level
   do ilev=1,z_level-1
 
@@ -1398,7 +1403,7 @@ subroutine refineZone (zone, z_level)
     end if
 
     ! Refine final list of local blocks
-    write(logu,'(1x,a)') "Refining local blocks ..."
+    if (verbosity > 2) write(logu,'(1x,a)') "Refining local blocks ..."
     do nb=nbmin,nbmax
       bID = globalBlocks(nb)
       flag = refineFlags(nb)
@@ -1499,7 +1504,7 @@ subroutine coarseBlocks ()
       call getOwner (eID, elder_owner)
       call siblings (eID, sib_list)
       call father (eID, fID)
-      write(logu,'(1x,a,i0)') "Coarsening children of block ", fID
+      if (verbosity > 2) write(logu,'(1x,a,i0)') "Coarsening children of block ", fID
       if (verbose) then
         write(logu,*) "Elder owner:", elder_owner
         write(logu,*) "family:", sib_list
@@ -1754,7 +1759,7 @@ subroutine doBalance ()
   ! After it's been built, it is used walked one entry at a time to transfer
   ! blocks between processes
 
-  call tic(mark)
+  if (verbosity > 3) call tic(mark)
 
   ! First, build an ordered list of blocks according to its position in
   ! in a Hilbert walk at the finest level
@@ -1832,7 +1837,7 @@ subroutine doBalance ()
   !    the new owner
   ! 4) if they are different, and I'm the new owner, MPI_RECV the block from
   !    the old owner
-  call tic(mark)
+  if (verbosity > 3) call tic(mark)
   sent = 0
   received = 0
   do nb=1,nbActive
@@ -1901,11 +1906,11 @@ subroutine doBalance ()
       nbLocal = nbLocal + 1
     end if
   end do
-
-  ! Report load balance results
-  write(logu,'(1x,a,i0,a,i0,a)') "Sent ", sent, " blocks; received ", received, " blocks"
-  write(logu,'(1x,a,i0,a)') "Now have ", nbLocal, " local blocks"
-
+  if (verbosity > 2)  then
+    ! Report load balance results
+    write(logu,'(1x,a,i0,a,i0,a)') "Sent ", sent, " blocks; received ", received, " blocks"
+    write(logu,'(1x,a,i0,a)') "Now have ", nbLocal, " local blocks"
+  end if
   ! Synchronize global block registry
   call syncBlockLists ()
 
