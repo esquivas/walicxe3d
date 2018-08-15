@@ -70,8 +70,10 @@ subroutine Godunov (order)
 
   ! Exchange 1-deep boundaries to fill ghost cells (all blocks)
     if (verbosity > 3) call tic(mark)
-  write(logu,*) ""
-    if (verbosity > 1) write(logu,'(1x,a)') "> Exchanging 1-deep boundary layers ..."
+    if (verbosity > 1) then
+      write(logu,*) ""
+      write(logu,'(1x,a)') "> Exchanging 1-deep boundary layers ..."
+    end if
   call boundary (1, U)
   if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
@@ -81,7 +83,7 @@ subroutine Godunov (order)
   ! First-order integration of all local blocks
   bcount = 0
   call tic(mark)
-  write(logu,*) ""
+  if ( verbosity > 1 ) write(logu,*) ""
   if (order.eq.1) then
       if (verbosity > 1) write(logu,'(1x,a)') "> Integrating blocks ..."
   else if (order.eq.2) then
@@ -252,7 +254,7 @@ end do
           + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
 
         !if (eight_wave) then
-        !  call divbcorr_8w_source(locIndx,i,j,k,s)
+        !  call divbcorr_8w_source(locIndx,lev,i,j,k,s)
         !  up(locIndx,:,i,j,k)= up(locIndx,:,i,j,k)+dtp*s(:)
         !end if
 
