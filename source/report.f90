@@ -48,19 +48,21 @@ subroutine main_report ()
   call nicetime(dt*t_sc, dtstr)
 
   ! Report progress
-  write(logu,*) "============================================"
-  write(logu,'(1x,a,i0,a)') "Iteration " , it, " complete!"
-  write(logu,'(1x,a)') stamp()
-  write(logu,'(1x,a,a)') "Elapsed: ", nicetoc(start_mark)
-  write(logu,'(1x,a,a)') "time = ", trim(timestr)
-  write(logu,'(1x,a,a)') "dt = ", trim(dtstr)
-  write(logu,'(1x,i0,a)') nbLocal, " local blocks"
-  write(logu,*) "============================================"
-  write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
+  if (verbosity > 0) then
+    write(logu,*) "============================================"
+    write(logu,'(1x,a,i0,a)') "Iteration " , it, " complete!"
+    write(logu,'(1x,a)') stamp()
+    write(logu,'(1x,a,a)') "Elapsed: ", nicetoc(start_mark)
+    write(logu,'(1x,a,a)') "time = ", trim(timestr)
+    write(logu,'(1x,a,a)') "dt = ", trim(dtstr)
+    write(logu,'(1x,i0,a)') nbLocal, " local blocks"
+    write(logu,*) "============================================"
+    write(logu,'(1x,a,i0,a,a,a,a,a,i0,a,i0)') "it ", it, "; t= ", &
     trim(timestr), "; dt=", trim(dtstr), "; blocks=", nbLocal, "/", nbActive
-  write(logu,*) "============================================"
-  write(logu,*) ""
-  call flush(logu)
+    write(logu,*) "============================================"
+    write(logu,*) ""
+    call flush(logu)
+  end if
 
 end subroutine main_report
 
