@@ -136,7 +136,7 @@ subroutine initmain ()
 
   ! =================================
   if (verbosity > 3) call tic(mark)
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,'(a)') "================================================================================"
     if (logged) then
@@ -153,7 +153,7 @@ subroutine initmain ()
   ! Get hostname
   call HostNm(host)
 
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     if(logged.or.rank.eq.master) then
       write(logu,*)
       write(logu,'(1x,a)') "***************************************************"
@@ -177,10 +177,11 @@ subroutine initmain ()
     end if
   end if
   if (verbosity > 3) call tic (start_mark)
-  if (verbosity > 1) then
+  if (verbosity > 0) then
     write(logu,*) ""
     write(logu,'(1x,a,i0,a)') "Processor ", rank, " ready."
-
+  end if
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     ! =================================
 
     ! Report parameters. For warm starts, critical parameters are also verified.
@@ -305,10 +306,13 @@ subroutine initmain ()
   ! Radiative cooling
   write(logu,*) ""
   if (cooling_type.eq.COOL_NONE) then
-    if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is OFF"
+    if ( (verbosity > 0).and.(logged.or.(rank==master)) ) &
+       write(logu,'(1x,a)') "> Radiative cooling is OFF"
   else
-    if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is ON"
-    if (verbosity > 0) write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
+    if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+      if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is ON"
+      if (verbosity > 0) write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
+    end if
     if (cooling_type.eq.COOL_TABLE) then
       call loadcooldata ()
     else if (cooling_type.eq.COOL_TABLE_METAL) then
@@ -324,7 +328,7 @@ subroutine initmain ()
   end if
 
   ! Allocate memory and initialize big data arrays
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,'(1x,a)') "> Allocating memory for big arrays ..."
     write(logu,*) ""
@@ -457,18 +461,20 @@ subroutine initmain ()
   nbmin = rank*nbMaxProc + 1
   nbmax = rank*nbMaxProc + nbMaxProc
 
-  ! Report allocation results
-  write(logu,'(1x,a)') "Successfully allocated big arrays."
-  write(logu,'(1x,a,f6.1,a)') "U:      ", sizeof(U)/(1024.*1024.), " MB"
-  write(logu,'(1x,a,f6.1,a)') "UP:     ", sizeof(UP)/(1024.*1024.), " MB"
-  write(logu,'(1x,a,f6.1,a)') "PRIM:   ", sizeof(PRIM)/(1024.*1024.), " MB"
-  write(logu,'(1x,a,f6.1,a)') "Fluxes: ", (sizeof(F)+sizeof(G)+sizeof(H)+&
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    ! Report allocation results
+    write(logu,'(1x,a)') "Successfully allocated big arrays."
+    write(logu,'(1x,a,f6.1,a)') "U:      ", sizeof(U)/(1024.*1024.), " MB"
+    write(logu,'(1x,a,f6.1,a)') "UP:     ", sizeof(UP)/(1024.*1024.), " MB"
+    write(logu,'(1x,a,f6.1,a)') "PRIM:   ", sizeof(PRIM)/(1024.*1024.), " MB"
+    write(logu,'(1x,a,f6.1,a)') "Fluxes: ", (sizeof(F)+sizeof(G)+sizeof(H)+&
     sizeof(FC)+sizeof(GC)+sizeof(HC))/(1024.*1024.), " MB"
-  totalsize = (sizeof(U)+sizeof(UP)+sizeof(PRIM)+sizeof(F)+sizeof(G)+&
+    totalsize = (sizeof(U)+sizeof(UP)+sizeof(PRIM)+sizeof(F)+sizeof(G)+&
     sizeof(H)+sizeof(FC)+sizeof(GC)+sizeof(HC))/(1024.*1024.)
-  write(logu,'(1x,a,f7.1,a,f7.1,a)') "Total: ", totalsize, " MB / ", &
+    write(logu,'(1x,a,f7.1,a,f7.1,a)') "Total: ", totalsize, " MB / ", &
     RAM_per_proc, "MB"
-
+  endif
+  if(.not.logged.and.rank==master) write(logu,'(a)') "> The above fogures are per processor"
   ! =================================
 
   ! Initialize simulation state - (warm start does this later)
@@ -499,8 +505,7 @@ subroutine initflow ()
   use globals
   use userconds
   implicit none
-
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,*) "============================================"
     write(logu,'(1x,a)') " Setting Initial Conditions  ..."
@@ -510,7 +515,7 @@ subroutine initflow ()
   ! IC (defined in user.f90)
   call setInitialCondition (U)
 
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,'(1x,a)') "> Done setting ICs"
     write(logu,*) ""
@@ -538,7 +543,7 @@ subroutine warmstart ()
   character(4) :: noutstr
   character(3) :: rankstr
 
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,*) "============================================"
     write(logu,'(1x,a)') " Performing warm start ..."
@@ -547,7 +552,8 @@ subroutine warmstart ()
   end if
 
   ! Open state file
-  if (verbosity > 0) write(logu,'(1x,a,a,a)') "Reading state file '", trim(warm_file), "' ..."
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) )  &
+    write(logu,'(1x,a,a,a)') "Reading state file '", trim(warm_file), "' ..."
   unitin = 10 + rank
   open (unit=unitin, file=warm_file, status='old', iostat=istat)
   if (istat.ne.0) then
@@ -559,7 +565,7 @@ subroutine warmstart ()
   ! Read simulation state variables and datadir
   read(unitin,'(es22.15,i8,i5)') time, it, noutput
   read(unitin,'(a)') datadir_old
-  if (verbosity > 0) then
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
     write(logu,*) ""
     write(logu,'(1x,a,i0,a)') "> Restarting simulation from output ", noutput, " ..."
     write(logu,'(1x,a,i0)') "Last iteration = ", it
@@ -643,11 +649,13 @@ subroutine basegrid ()
 
   if (verbosity > 3) call tic(mark)
 
-  write(logu,*) ""
-  write(logu,*) "============================================"
-  write(logu,'(1x,a)') " Initializing the base grid ..."
-  write(logu,*) "============================================"
-  write(logu,*) ""
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    write(logu,*) ""
+    write(logu,*) "============================================"
+    write(logu,'(1x,a)') " Initializing the base grid ..."
+    write(logu,*) "============================================"
+    write(logu,*) ""
+  end if
 
   ! Every rank calculates the base grid geometry, based on the selected method
   if (mesh_method.eq.MESH_AUTO) then
@@ -708,7 +716,7 @@ subroutine basegrid ()
     write(logu,'(a)') "> Modify parameters.f90"
     call clean_abort (ERROR_BASEGRID_BAD_ASPECT)
   else
-    if (verbosity > 0) then
+    if ( (verbosity > 0).and.(logged.or.(rank==master)) )  then
       write(logu,'(1x,a,i2,a,i2,a,i2)') "Grid geometry (root blocks): ", &
       nbrootx, " x ", nbrooty, " x ", nbrootz
       write(logu,'(1x,a,i3)') "Number of root blocks: ", nbrootx*nbrooty*nbrootz
@@ -800,7 +808,7 @@ subroutine basegrid ()
     write(logu,'(1x,a,a)') "> Created base grid in ", nicetoc(mark)
     write(logu,*) ""
   end if
-  
+
 end subroutine basegrid
 
 !===============================================================================
