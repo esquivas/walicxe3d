@@ -52,7 +52,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
 
   ! ==========================
 
-  write(logu,'(a)') "> Writing 2D CUT to disk ..."
+  if (verbosity > 0) write(logu,'(a)') "> Writing 2D CUT to disk ..."
 
   ! Allocate output map
   if (cut_axis.eq.AXIS_X) then
@@ -73,7 +73,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
     outmap2(:,:,:) = 0.0
   end if
 
-  write(logu,'(a)') "Allocated map" ! DEBUG
+    if (verbosity > 1) write(logu,'(a)') "Allocated map" ! DEBUG
 
   ! Loop over all local blocks. Determine if block intersects cut plane
   blocksused = 0
@@ -90,7 +90,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
       if (plane.ne.-1) then
 
 !        write(logu,'(a)') "Block intersects!"  ! DEBUG
-!        write(*,*) "Cutplane=", plane    
+!        write(*,*) "Cutplane=", plane
 
         blocksused = blocksused + 1
         if (cut_axis.eq.AXIS_X) then
@@ -142,7 +142,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
               j1 = j1
             end if
 
-            ! Copy data value into output map. Duplicate value 
+            ! Copy data value into output map. Duplicate value
             ! into multiple cells if block not at highest resolution
             do i_off=0,2**(maxlev-ilev)-1
               do j_off=0,2**(maxlev-ilev)-1
@@ -167,7 +167,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
   end do
 
 !  write(logu,*) "Density (before reduction):", minval(outmap(1,:,:)), maxval(outmap(1,:,:))
-  write(logu,'(a)') "Done extracting data. Reducing across processes ..."
+    if (verbosity > 2) write(logu,'(a)') "Done extracting data. Reducing across processes ..."
 
   ! Reduce all extracted data from all processors
   call mpi_reduce (outmap, outmap2, neqtot*nxmap*nymap, &
@@ -175,7 +175,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
 
 !  if (rank.eq.master) write(logu,*) "Density (after reduction):", minval(outmap2(1,:,:)), maxval(outmap(1,:,:))
 
-  write(logu,'(a)') "Output map successfully reduced."
+    if (verbosity > 2) write(logu,'(a)') "Output map successfully reduced."
 
   call mpi_barrier (mpi_comm_world, ierr)
 
@@ -203,7 +203,7 @@ subroutine extractCut (cut_axis, cut_location, nout)
                           trim(filename) // ".vtk"
 
     ! Write output map to file
-    write(*,*) "Writing cut map to file ", trim(filename)
+      if (verbosity > 0) write(logu,*) "Writing cut map to file ", trim(filename)
     call write2DMapVTK (outmap2, nxmap, nymap, filename)
 
   end if
@@ -285,5 +285,3 @@ subroutine bounds(bID, xl, xh, yl, yh, zl, zh)
 end subroutine bounds
 
 ! ======================================================
-
-
