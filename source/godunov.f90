@@ -50,6 +50,7 @@ subroutine Godunov (order)
   use HLL,        only : HLLfluxes
   use HLLC,       only : HLLCfluxes
   use HLLE,       only : HLLEfluxes
+  use HLLD,       only : HLLDfluxes
 
   implicit none
 
@@ -109,6 +110,9 @@ subroutine Godunov (order)
         case (SOLVER_HLLE)
           call HLLEfluxes (bIndx, 1)
 
+        case (SOLVER_HLLD)
+          call HLLEfluxes (bIndx, 1)
+
       end select
 
       ! Apply conservative formula
@@ -160,6 +164,9 @@ subroutine Godunov (order)
             call HLLCfluxes (bIndx, 2)
 
           case (SOLVER_HLLE)
+            call HLLEfluxes (bIndx, 2)
+
+          case (SOLVER_HLLD)
             call HLLEfluxes (bIndx, 2)
 
         end select
@@ -246,17 +253,17 @@ if (HC(ieq,i,j,k).ne.HC(ieq,i,j,k)) then
 end if
 end do
 ! DEBUG
-        s(:) = 0.
         UP(locIndx,:,i,j,k)   &
           = U(locIndx,:,i,j,k)   &
           + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))   &
           + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))   &
           + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
 
-        !if (eight_wave) then
-        !  call divbcorr_8w_source(locIndx,lev,i,j,k,s)
-        !  up(locIndx,:,i,j,k)= up(locIndx,:,i,j,k)+dtp*s(:)
-        !end if
+        if (eight_wave) then
+          s(:) = 0.
+          call divbcorr_8w_source(locIndx,lev,i,j,k,s)
+          UP(locIndx,:,i,j,k)= UP(locIndx,:,i,j,k)+dtp*s(:)
+        end if
 
       end do
     end do
