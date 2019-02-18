@@ -180,12 +180,18 @@ module parameters
   ! Solver parameters
   ! ============================================
 
+  !> Enable Active Magnetic field
+  logical,  parameter :: mhd = .true.
+
   !> Numerical Integrator
   !! Currently recognized options:
-  !!  SOLVER_LAX: First order Lax-Friedrichs scheme (for testing)
-  !!  SOLVER_HLL1: Simplified (first-order) HLL Riemann solver
-  !!  SOLVER_HLL: Full (second-order) HLL Riemann solver
-  !!  SOLVER_HLLC: HLLC Riemann solver (second-order)
+  !!  Hydrodynamic Solvers (HD, could be used with passive B field)
+  !!    SOLVER_LAX: First order Lax-Friedrichs scheme (for testing)
+  !!    SOLVER_HLL1: Simplified (first-order) HLL Riemann solver
+  !!    SOLVER_HLL: Full (second-order) HLL Riemann solver
+  !!    SOLVER_HLLC: HLLC Riemann solver (second-order)
+  !!  Magnetohydrodynamic Solvers (MHD, active B field)
+  !!    SOLVER_HLLE: HLLE Riemann solver (second order)
   integer, parameter :: solver_type = SOLVER_HLLC
 
   !> Slope Limiter (to be used with the HLL/HLLC solvers)
