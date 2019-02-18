@@ -177,6 +177,7 @@ end subroutine HLLEfluxes
 subroutine primfhlle (pL, pR, ff)
 
   use parameters
+  use constants, only  : DIM_X
   use hydro_core, only : prim2fluxes, prim2flow
   implicit none
 
