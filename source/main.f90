@@ -102,9 +102,10 @@ program Walicxe3D
     call loadBalance ()
 
     ! Data output (if scheduled)
-    if (time.ge.nextout*dtout/t_sc) then
+    if (dumpout) then
       call writeOutput(nextout)
       nextout = nextout + 1
+      dumpout = .false. ! until next time
     end if
 
     ! Report progress
