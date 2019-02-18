@@ -53,7 +53,7 @@ subroutine writeOutput (noutput)
     if (logged .or. rank == master) then
       write(logu,*) ""
       write(logu,*) "============================================"
-      write(logu,'(1x,a)') " Writing data ouput ..."
+      write(logu,'(1x,a,i0,a)') " Writing data ouput #",noutput, " ..."
       write(logu,*) "============================================"
       write(logu,'(1x,a)') stamp()
     end if
