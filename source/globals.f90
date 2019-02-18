@@ -50,9 +50,10 @@ module globals
 
   ! Simulation state globals
   integer :: it            !< Iteration number
-  real :: time             !< Time at start of current timestep
-  real :: dt               !< Current numerical timestep
+  real    :: time          !< Time at start of current timestep
+  real    :: dt            !< Current numerical timestep
   integer :: nextout       !< Number of next output
+  logical :: dumpout       !< Is time to write to write output
 
   ! Generic globals
   integer :: start_mark     !< Timing mark (start of simulation)
@@ -61,7 +62,7 @@ module globals
   character(15) :: host     !< The host on which the code runs
 
   ! MPI globals
-#ifdef MPIP 
+#ifdef MPIP
   integer :: ierr           !< Standard MPI return error
 #endif
 
@@ -137,7 +138,7 @@ module globals
   !> @brief Grid Spacings
   real, allocatable :: dx(:)     !< Grid spacings along X (for every level)
   real, allocatable :: dy(:)     !< Grid spacings along Y (for every level)
-  real, allocatable :: dz(:)     !< Grid spacings along Z (for every level)  
+  real, allocatable :: dz(:)     !< Grid spacings along Z (for every level)
 
   !> @brief Radiative cooling coefficients table
   real, allocatable :: cooltable(:,:)
@@ -160,4 +161,3 @@ module globals
   real :: timings(3)
 
 end module globals
-
