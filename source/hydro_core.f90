@@ -1,8 +1,8 @@
 !===============================================================================
 !> @file prims.f90
 !> @brief Calculation of primitives and conversion from/to flow variables
-!> @author Juan C. Toledo
-!> @date 30/Nov/2011
+!> @author Alex Esquivel
+!> @date 16/Aug/2018
 
 ! Copyright (c) 2014 Juan C. Toledo and Alejandro Esquivel
 !
