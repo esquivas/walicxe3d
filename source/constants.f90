@@ -147,7 +147,7 @@ module constants
   integer, parameter :: ERROR_TIMESTEP = 24
   integer, parameter :: ERROR_BAD_OUTPUT_MODE = 25
   integer, parameter :: ERROR_NOT_ENOUGH_PASSIVES = 26
-
+  integer, parameter :: ERROR_NAN_IN_FLUXES = 27
 contains
 
   ! Boundary conditions names
