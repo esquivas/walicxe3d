@@ -183,12 +183,23 @@ subroutine getTimestep (dt_glob)
     dt_loc = min( dt_hydro, dt_cool ) * CFL
   end if
 
+  if (it <= 10 ) then
+    !   boots up simulation with small CFL 10 iterations
+    dt_loc = (2.**(-real(11-it)))*dt_loc
+  end if
+
 #ifdef MPIP
   ! Obtain the global minimum timestep through MPI
   call MPI_ALLREDUCE(dt_loc, dt_glob, 1, mpi_real_kind, mpi_min, mpi_comm_world, ierr)
 #else
   dt_glob = dt_loc
 #endif
+
+!  Adjust dt so t+dt doesn't overshoot printing time
+if(( time + dt_glob )>= nextout*dtout/t_sc ) then
+  dt_glob= nextout*dtout/t_sc - time
+  dumpout=.true.
+endif
 
   return
 
