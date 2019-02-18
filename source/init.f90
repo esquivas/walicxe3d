@@ -474,7 +474,7 @@ subroutine initmain ()
     write(logu,'(1x,a,f7.1,a,f7.1,a)') "Total: ", totalsize, " MB / ", &
     RAM_per_proc, "MB"
   endif
-  if(.not.logged.and.rank==master) write(logu,'(a)') "> The above fogures are per processor"
+  if(.not.logged.and.rank==master) write(logu,'(a)') "> The above figures are per processor"
   ! =================================
 
   ! Initialize simulation state - (warm start does this later)
