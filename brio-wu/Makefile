@@ -8,8 +8,8 @@ PROGRAM= Walicxe3D
 # Non-MPI Compiler
 # Supported options: gfortran, ifort
 # For MPI, mpfi90 is used
-COMPILER= ifort
-#COMPILER= gfortran
+#COMPILER= ifort
+COMPILER= gfortran
 
 
 #  Search Path for Makefile, object files are searched in the order below
@@ -18,12 +18,12 @@ VPATH = . : ../source
 # Additional user compiler flags
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
-USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
+#USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
 ## gfortran-compatible flags
-#USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
+USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
 ## Generic flags
-#USER_FLAGS= -O3
+USER_FLAGS= -O3
 
 # ============================================= #
 # Compilation Time Parameters (Y=on, N=off)     #
