@@ -106,10 +106,10 @@ endif
 ifeq ($(DOUBLEP),Y)
 CFLAGS += -DDOUBLEP
 ifeq ($(COMPILER),ifort)
-CFLAGS += -r8
+CFLAGS += -r8 -Difort
 endif
 ifeq ($(COMPILER),gfortran)
-CFLAGS += -fdefault-real-8
+CFLAGS += -fdefault-real-8 -Dgfortran
 endif
 endif
 
