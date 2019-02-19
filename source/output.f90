@@ -77,8 +77,14 @@ subroutine writeOutput (noutput)
       end if
     return
   else
+
     ! create log directory in case it's missing
-    inquire(directory=trim(datadir),exist=dir_exists)
+#ifdef gfortran
+    inquire(file=trim(datadir)//'/.', exist=dir_exists)
+#endif
+#ifdef ifort
+    inquire(directory=trim(datadir), exist=dir_exists)
+#endif
     if (.not.dir_exists .and. rank ==master ) then
       write(logu,'(a)') "Could not find datadir, creating it anew"
       call system('mkdir -p ' // trim(datadir) )
