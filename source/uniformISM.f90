@@ -86,7 +86,8 @@ contains
 
     use constants,  only : AMU, KB, COOL_TABLE_METAL
     use globals,    only : localBlocks, logu
-    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin, nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas, verbosity
+    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin,&
+                           nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas, verbosity
     use hydro_core, only : prim2flow
 
     implicit none
