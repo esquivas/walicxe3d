@@ -275,7 +275,8 @@ subroutine initmain ()
     write(logu,*) ""
     write(logu,'(1x,a)') "> Hydro Solver"
     write(logu,'(1x,a,a)') "Type: ", trim(solvername(solver_type))
-    if ((solver_type.eq.SOLVER_HLL).or.(solver_type.eq.SOLVER_HLLC)) then
+    if ( (solver_type.eq.SOLVER_HLL ).or.(solver_type.eq.SOLVER_HLLC).or. &
+         (solver_type.eq.SOLVER_HLLE).or.(solver_type.eq.SOLVER_HLLD) ) then
       ! Check that two ghost cells are used for second-order solvers
       if (nghost.ne.2) then
         write(logu,*) "This solver requires TWO ghost cells!"
