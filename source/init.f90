@@ -91,7 +91,12 @@ subroutine initmain ()
     logfile = trim(logdir) // trim(slash) // "rank" // rankstr // ".log"
 
     ! create log directory in case it's missing
+#ifdef gfortran
+    inquire(     file=trim(logdir)//'/.', exist=existing )
+#endif
+#ifdef ifort
     inquire(directory=trim(logdir),exist=existing)
+#endif
     if (.not.existing .and. rank ==master ) then
       write(*,'(a)') "Could not find logdir, creating it anew"
       call system('mkdir -p ' // trim(logdir) )
