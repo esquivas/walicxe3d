@@ -64,6 +64,7 @@ subroutine HLLEfluxes (locIndx, order)
 
   integer :: i, j, k
   real :: pl(neqtot), pr(neqtot), pll(neqtot), prr(neqtot), ff(neqtot)
+  real :: vL, BL, vR, BR
   logical :: valid
 
   ! First-order method
@@ -94,6 +95,7 @@ subroutine HLLEfluxes (locIndx, order)
             call primfhlle (pL, pR, ff)
             call swapxy (ff)
             GC(:,i,j,k) = ff(:)
+
 
             ! Z dimension
             pL(:) = PRIM(locIndx,:,i,j,k)
@@ -195,11 +197,11 @@ subroutine primfhlle (pL, pR, ff)
 !  write(*,*) sl, sr
 
   ! Obtain intercell fluxes as given by 10.21 of Toro
-  if (sl.ge.0) then
+  if (sl > 0) then
     call prim2fluxes (pL, DIM_X, fL)
     ff(:) = fL(:)
     return
-  else if (sr.le.0) then
+  else if (sr < 0) then
     call prim2fluxes (pR, DIM_X, fR)
     ff(:) = fR(:)
     return
@@ -243,6 +245,9 @@ subroutine wavespeedHLLE (primL, primR, sl, sr)
   ! Davis direct bounded, 10.38 of Toro
   sl = min( primL(2)-cfL, primR(2)-cfR )
   sr = max( primL(2)+cfL, primR(2)+cfR )
+
+  !sl = min( primL(2),primR(2)) - max(cfL, cfR)
+  !sr = max( primL(2),primR(2)) + max(cfL, cfR)
 
   return
 
