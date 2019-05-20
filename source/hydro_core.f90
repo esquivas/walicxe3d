@@ -621,6 +621,9 @@ contains
 
     select case (opt)
 
+    case (LIMITER_NO_AVERAGE)
+      average = 0.
+
     case (LIMITER_NONE)
       average = 0.5*(a+b)
 
