@@ -264,8 +264,8 @@ subroutine initmain ()
       write(logu,*) ""
       if (eight_wave)      &
       write(logu,'(1x,a)') "> div(B) constrained with 8 wave method'"
-      if (enable_field_cd) &
-      write(logu,'(1x,a)') "> div(B) constrained with field CD method'"
+      if (enable_flux_cd) &
+      write(logu,'(1x,a)') "> div(B) constrained with flux CD method'"
     else
       write(logu,*) ""
       write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
