@@ -84,13 +84,14 @@ module constants
   integer, parameter :: SOLVER_HLLD = 6    !< HLLD Riemann solver
 
   ! Slope limiters
-  integer, parameter :: LIMITER_NONE     = 0     !< No slope limiter
-  integer, parameter :: LIMITER_MINMOD   = 1     !< Minmod limiter
-  integer, parameter :: LIMITER_VANLEER  = 2     !< Falle limiter
-  integer, parameter :: LIMITER_ALBADA   = 3     !< Van Albada limiter
-  integer, parameter :: LIMITER_UMIST    = 4     !< UMIST limiter
-  integer, parameter :: LIMITER_WOODWARD = 5   !< Woodoward limiter
-  integer, parameter :: LIMITER_SUPERBEE = 6   !< Superbee limiter
+  integer, parameter :: LIMITER_NO_AVERAGE = -1  !< No average (1st order)
+  integer, parameter :: LIMITER_NONE       =  0  !< No slope limiter
+  integer, parameter :: LIMITER_MINMOD     =  1  !< Minmod limiter
+  integer, parameter :: LIMITER_VANLEER    =  2  !< Falle limiter
+  integer, parameter :: LIMITER_ALBADA     =  3  !< Van Albada limiter
+  integer, parameter :: LIMITER_UMIST      =  4  !< UMIST limiter
+  integer, parameter :: LIMITER_WOODWARD   =  5  !< Woodoward limiter
+  integer, parameter :: LIMITER_SUPERBEE   =  6  !< Superbee limiter
 
   ! Cooling algorithms
   integer, parameter :: COOL_NONE = 0      !< No radiative cooling
