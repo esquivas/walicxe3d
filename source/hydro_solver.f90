@@ -67,8 +67,8 @@ subroutine hydroSolver ()
     write(logu,'(a)') "Abnormal timestep change!"
     write(logu,'(a,es12.5)') "Previous timestep:", dt
     write(logu,'(a,es12.5)') "New timestep:     ", dt_new
-    write(logu,'(a)') "***ABORTING***"
-    call clean_abort(ERROR_TIMESTEP)
+    !write(logu,'(a)') "***ABORTING***"
+    !call clean_abort(ERROR_TIMESTEP)
   end if
   dt = dt_new
   if (verbosity > 2) then
@@ -97,6 +97,9 @@ subroutine hydroSolver ()
       call Godunov (2)
 
     case (SOLVER_HLLE)
+      call Godunov (2)
+
+    case (SOLVER_HLLD)
       call Godunov (2)
 
   end select
@@ -208,13 +211,14 @@ end subroutine getTimestep
 !===============================================================================
 
 !> @brief Advances simulation by one timestep
+!> and includes viscosity applied with the time advanced vars
 subroutine doStep ()
 
   use parameters
   use globals
   implicit none
 
-  integer :: nb, bID, i, j, k
+  integer :: nb, bID, i, j, k, ieq
 
   time = time + dt
 
@@ -225,7 +229,13 @@ subroutine doStep ()
       do i=1,ncells_x
         do j=1,ncells_y
           do k=1,ncells_z
-            U(nb,:,i,j,k) = UP(nb,:,i,j,k)
+            do ieq =1,8
+            U(nb,ieq,i,j,k) = UP(nb,ieq,i,j,k) + 0.*visc_eta*(             &
+                            + UP(nb,ieq,i+1,j,k) + UP(nb,ieq,i-1,j,k)   &
+                            + UP(nb,ieq,i,j+1,k) + UP(nb,ieq,i,j-1,k)   &
+                            + UP(nb,ieq,i,j,k+1) + UP(nb,ieq,i,j,k-1)   &
+                            - 6.0*UP(nb,ieq,i,j,k)        )
+            end do
           end do
         end do
       end do
