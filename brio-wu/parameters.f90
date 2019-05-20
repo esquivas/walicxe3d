@@ -51,12 +51,12 @@ module parameters
   character(*), parameter :: warm_file = ""
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs =  16
+  integer, parameter :: nProcs =  8
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
   ! Note that 1 MB = 1024 kB = 1024*1024 or 2^20 bytes
-  real, parameter :: RAM_per_proc = 1024
+  real, parameter :: RAM_per_proc = 512  !1024
 
   ! ============================================
   ! Adaptive Mesh parameters
@@ -89,7 +89,7 @@ module parameters
   ! level
   ! > MUST BE POWERS OF TWO! <
   integer, parameter :: p_maxcells_x = 256
-  integer, parameter :: p_maxcells_y = 256
+  integer, parameter :: p_maxcells_y = 16
   integer, parameter :: p_maxcells_z = 16
 
   ! -- OR --
@@ -119,8 +119,8 @@ module parameters
   ! These are the maximum relative gradients required to mark a block for
   ! either refinement or coarsening. Note: refineThres must be larger than
   ! twice coarseThres. Good values are 0.3 and 0.03.
-  real, parameter :: refineThres = 0.3           !< Refinement threshold
-  real, parameter :: coarseThres = 0.03          !< Coarsening threshold
+  real, parameter :: refineThres = 0.1           !< Refinement threshold
+  real, parameter :: coarseThres = 0.01          !< Coarsening threshold
 
   ! ============================================
   ! Boundary conditions
@@ -166,7 +166,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlle-8w/"
+  character(*), parameter :: datadir = "./hlle-FCD-1st_ord/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -197,7 +197,7 @@ module parameters
   !      1) Include terms proportional to DIV B (powell et al. 1999)
   logical, parameter :: eight_wave = .true.
   !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
-  logical, parameter :: enable_field_cd = .false.
+  logical, parameter :: enable_flux_cd = .true.
 
   !> Numerical Integrator
   !! Currently recognized options:
@@ -213,6 +213,7 @@ module parameters
 
   !> Slope Limiter (to be used with the 2nd order HLL* solvers)
   !! Currently recognized options:
+  !!  LIMITER_NO_AVERAGE = Performs no average (1st order in space)
   !!  LIMITER_NONE: use arithmetic average, i.e., no limiter
   !!  LIMITER_MINMOD: Minmod limiter - most diffusive
   !!  LIMITER_VANLEER: van Leer limiter
@@ -220,7 +221,7 @@ module parameters
   !!  LIMITER_UMIST: UMIST limiter
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
-  integer, parameter :: limiter_type = LIMITER_VANLEER
+  integer, parameter :: limiter_type = LIMITER_NO_AVERAGE
 
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
@@ -230,10 +231,10 @@ module parameters
   integer, parameter :: npassive = 1
 
   !> Courant-Friedrichs-Lewis parameter (0 < CFL < 1.0)
-  real, parameter :: CFL = 0.4
+  real, parameter :: CFL = 0.3
 
   !> Artificial viscosity
-  real, parameter :: visc_eta = 0.0
+  real, parameter :: visc_eta = 0.01
 
   ! ============================================
   ! Radiative Cooling
