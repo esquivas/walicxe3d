@@ -69,6 +69,7 @@ init.o \
 output.o \
 boundary.o \
 lax.o \
+flux_cd.o \
 hll.o \
 hllc.o \
 hlle.o \
