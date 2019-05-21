@@ -62,10 +62,10 @@ program Walicxe3D
   end if
 
   ! Distribute base load among all processors
-  !call loadBalance ()
+  call loadBalance ()
 
   ! Update primitives
-  !call updatePrims ()
+  call updatePrims ()
 
   ! Write initial condition to disk
   if (nextout.eq.0) then
