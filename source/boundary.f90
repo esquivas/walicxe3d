@@ -340,7 +340,8 @@ subroutine normalBoundary (depth, uvars)
               call opposite (direction, src_face)
               call layerLimits (src_face, depth, .false., i3, i4, j3, j4, k3, k4)
               call find (srcID, localBlocks, nbMaxProc, srcInd)
-              uvars(destInd, 1:neqtot, i1:i2, j1:j2, k1:k2) = uvars(srcInd, 1:neqtot, i3:i4, j3:j4, k3:k4)
+              uvars(destInd, 1:neqtot, i1:i2, j1:j2, k1:k2) = &
+              uvars(srcInd,  1:neqtot, i3:i4, j3:j4, k3:k4)
 
               if (verbose) then
                 write(logu,'(1x,i8,a,i3,i3,i3,i3,i3,i3,a,i3,i3,i3,i3,i3,i3)') srcID, &
