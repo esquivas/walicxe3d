@@ -92,10 +92,8 @@ subroutine normalBoundary (depth, uvars)
   real :: x_buf(neqtot, depth, ncells_y/2, ncells_z/2)
   real :: y_buf(neqtot, ncells_x/2, depth, ncells_z/2)
   real :: z_buf(neqtot, ncells_x/2, ncells_y/2, depth)
-  logical :: verbose
-
   ! Debugging flag
-  verbose = .false.
+  logical, parameter :: verbose=.false.
 
   if (verbosity > 3) call tic(mark)
 
