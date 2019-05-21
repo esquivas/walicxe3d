@@ -795,10 +795,10 @@ subroutine basegrid ()
         end do
       end do
     end if
-
+    
     ! Synchronize block lists
     call syncBlockLists ()
-
+    
   else
 
     if (verbosity > 2) write(logu,*) ""
