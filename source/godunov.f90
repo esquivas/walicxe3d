@@ -111,7 +111,7 @@ subroutine Godunov (order)
           call HLLEfluxes (bIndx, 1)
 
         case (SOLVER_HLLD)
-          call HLLEfluxes (bIndx, 1)
+          call HLLDfluxes (bIndx, 1)
 
       end select
 
@@ -167,7 +167,7 @@ subroutine Godunov (order)
             call HLLEfluxes (bIndx, 2)
 
           case (SOLVER_HLLD)
-            call HLLEfluxes (bIndx, 2)
+            call HLLDfluxes (bIndx, 2)
 
         end select
 
