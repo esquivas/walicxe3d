@@ -775,7 +775,7 @@ subroutine basegrid ()
 
     ! Activate root blocks and initialize block registry
     if (verbosity > 2) write(logu,'(1x,a)') "> Creating root blocks ..."
-
+    
     ! Calculate bID of root blocks and register them in master's block list
     if (rank.eq.master) then
       nb = 1
@@ -788,7 +788,6 @@ subroutine basegrid ()
 
             ! Register block
             localBlocks(nb) = bID
-
             nb = nb + 1
             nbLocal = nbLocal + 1
 
