@@ -210,6 +210,7 @@ subroutine upwindStep (locIndx, dtp)
 
   integer :: i, j, k, bID, lev
   integer :: ieq   ! DEBUG
+  logical, parameter :: debug_mode = .false.
   real :: dtdx, dtdy, dtdz
   real :: s(neqtot)
 
@@ -226,32 +227,34 @@ subroutine upwindStep (locIndx, dtp)
       do k=1,ncells_z
 ! DEBUG
 ! Check FC, GC and HC values for NaNs
-do ieq=1,neqtot
-if (FC(ieq,i-1,j,k).ne.FC(ieq,i-1,j,k)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i-1, j, k
-  call clean_abort(ERROR_GENERIC)
+if (debug_mode) then
+  do ieq=1,neqtot
+    if (FC(ieq,i-1,j,k).ne.FC(ieq,i-1,j,k)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i-1, j, k
+      call clean_abort(ERROR_GENERIC)
+    end if
+    if (FC(ieq,i,j,k).ne.FC(ieq,i,j,k)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i, j, k
+      call clean_abort(ERROR_GENERIC)
+    end if
+    if (GC(ieq,i,j-1,k).ne.GC(ieq,i,j-1,k)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j-1, k
+      call clean_abort(ERROR_GENERIC)
+    end if
+    if (GC(ieq,i,j,k).ne.GC(ieq,i,j,k)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j, k
+      call clean_abort(ERROR_GENERIC)
+    end if
+    if (HC(ieq,i,j,k-1).ne.HC(ieq,i,j,k-1)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k-1
+      call clean_abort(ERROR_GENERIC)
+    end if
+    if (HC(ieq,i,j,k).ne.HC(ieq,i,j,k)) then
+      write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k
+      call clean_abort(ERROR_GENERIC)
+    end if
+  end do
 end if
-if (FC(ieq,i,j,k).ne.FC(ieq,i,j,k)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in FC at ", i, j, k
-  call clean_abort(ERROR_GENERIC)
-end if
-if (GC(ieq,i,j-1,k).ne.GC(ieq,i,j-1,k)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j-1, k
-  call clean_abort(ERROR_GENERIC)
-end if
-if (GC(ieq,i,j,k).ne.GC(ieq,i,j,k)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in GC at ", i, j, k
-  call clean_abort(ERROR_GENERIC)
-end if
-if (HC(ieq,i,j,k-1).ne.HC(ieq,i,j,k-1)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k-1
-  call clean_abort(ERROR_GENERIC)
-end if
-if (HC(ieq,i,j,k).ne.HC(ieq,i,j,k)) then
-  write(logu,'(a,i2,i2,i2)') "Nan in HC at ", i, j, k
-  call clean_abort(ERROR_GENERIC)
-end if
-end do
 ! DEBUG
         UP(locIndx,:,i,j,k)   &
           = U(locIndx,:,i,j,k)   &
