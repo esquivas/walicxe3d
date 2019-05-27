@@ -70,16 +70,15 @@ contains
   if ( (verbosity > 0).and.(logged.or.(rank==master)) ) &
      write(logu,'(1x,a)') "> Imposing Brio Wu initial conditions..."
 
-    !call refineZone (zone, zlevel)
-
     ! Impose flow conditions
     do nb=1,nbMaxProc
       bID = localBlocks(nb)
+
       if (bID.ne.-1) then
 
-        do i=nxmin,nxmax
+        do k=nzmin,nzmax
           do j=nymin,nymax
-            do k=nzmin,nzmax
+            do i=nxmin,nxmax
 
               call cellPos(bID, i, j, k, x, y, z)
 
@@ -112,12 +111,11 @@ contains
                 primit(6) = bx  ! / b_sc
                 primit(7) = by  ! / b_sc
                 primit(8) = bz  ! / b_sc
-                primit(9) = dens / d_sc
+                !primit(9) = dens / d_sc
 
                 ! Convert primitives and set flow vars for this cell
                 call prim2flow (primit, flowvars)
                 uvars(nb,:,i,j,k) = flowvars(:)
-
             end do
           end do
         end do
