@@ -229,7 +229,7 @@ subroutine doStep ()
       do i=1,ncells_x
         do j=1,ncells_y
           do k=1,ncells_z
-            do ieq =1,8
+            do ieq =1,neqtot
             U(nb,ieq,i,j,k) = UP(nb,ieq,i,j,k) + 0.*visc_eta*(             &
                             + UP(nb,ieq,i+1,j,k) + UP(nb,ieq,i-1,j,k)   &
                             + UP(nb,ieq,i,j+1,k) + UP(nb,ieq,i,j-1,k)   &
