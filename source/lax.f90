@@ -68,9 +68,9 @@ subroutine LaxFriedrichs ()
         do j=0,ncells_y+1
           do k=0,ncells_z+1
             pvars(:) = PRIM(nb,:,i,j,k)
-            call prim2fluxes (pvars, DIM_X, F(:,i,j,k))
-            call prim2fluxes (pvars, DIM_Y, G(:,i,j,k))
-            call prim2fluxes (pvars, DIM_Z, H(:,i,j,k))
+            call prim2fluxes (pvars, DIM_X, FC(:,i,j,k))
+            call prim2fluxes (pvars, DIM_Y, GC(:,i,j,k))
+            call prim2fluxes (pvars, DIM_Z, HC(:,i,j,k))
           end do
         end do
       end do
@@ -84,9 +84,9 @@ subroutine LaxFriedrichs ()
               ( U(nb,:,i+1,j,k) + U(nb,:,i-1,j,k) &
               + U(nb,:,i,j+1,k) + U(nb,:,i,j-1,k) &
               + U(nb,:,i,j,k+1) + U(nb,:,i,j,k-1) ) / 6.0 &
-              - 0.5*dt/dx(lev)*(F(:,i+1,j,k)-F(:,i-1,j,k)) &
-              - 0.5*dt/dy(lev)*(G(:,i,j+1,k)-G(:,i,j-1,k)) &
-              - 0.5*dt/dz(lev)*(H(:,i,j,k+1)-H(:,i,j,k-1))
+              - 0.5*dt/dx(lev)*(FC(:,i+1,j,k)-FC(:,i-1,j,k)) &
+              - 0.5*dt/dy(lev)*(GC(:,i,j+1,k)-GC(:,i,j-1,k)) &
+              - 0.5*dt/dz(lev)*(HC(:,i,j,k+1)-HC(:,i,j,k-1))
           end do
         end do
       end do
