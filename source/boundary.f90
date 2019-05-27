@@ -597,7 +597,7 @@ subroutine normalBoundary (depth, uvars)
 
             call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
             call find (destID, localBlocks, nbMaxProc, destInd)
-
+            
             ! For every ghost cell ...
             do i=i1,i2
               do j=j1,j2
@@ -646,15 +646,15 @@ subroutine normalBoundary (depth, uvars)
                     case (LEFT)
                       ip = 1
                     case (RIGHT)
-                      ip = ncells_x
+                      ip = 2*ncells_x - i + 1
                     case (FRONT)
                       jp = 1
                     case (BACK)
-                      jp = ncells_y
+                      jp = 2*ncells_y - j + 1
                     case (BOTTOM)
                       kp = 1
                     case (TOP)
-                      kp = ncells_z
+                      kp = 2.*ncells_z - k + 1
                     end select
 
                     uvars(destInd,:,i,j,k) = uvars(destInd,:,ip,jp,kp)
