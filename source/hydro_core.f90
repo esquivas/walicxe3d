@@ -42,9 +42,10 @@ contains
 !! cells of all local blocks, using the U flow vars array as source.
 subroutine updatePrims ()
 
-  use parameters
-  use globals
-  use tictoc
+  use parameters, only : verbosity
+  use globals, only : logu, U, PRIM
+  use constants, only : CELLS_ALL
+  use tictoc, only : tic, nicetoc
   implicit none
 
   integer :: mark
@@ -65,18 +66,17 @@ end subroutine updatePrims
 !! documentation of the calcPrimsBlock routine for further details.
 subroutine calcPrimsAll (uvars, pvars, cells)
 
-  use parameters
-  use globals
+  use parameters, only : nxmin, nxmax, nymin, nymax, nzmin, nzmax, &
+                         nbMaxProc, neqtot
+  use globals, only : logu, localBlocks
   implicit none
 
-  real, intent(in) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+  real, intent(in)  :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
   real, intent(out) :: pvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
   integer, intent(in) :: cells
 
   integer :: nb, bID, badcells
-  logical :: verbose
-
-  verbose = .true.
+  logical, parameter :: verbose=.true.
 
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
@@ -93,7 +93,6 @@ subroutine calcPrimsAll (uvars, pvars, cells)
     end if
   end do
 
-
 end subroutine calcPrimsAll
 
 !===============================================================================
@@ -109,8 +108,10 @@ end subroutine calcPrimsAll
 !! pressure corrections were needed.
 subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
 
-  use parameters
-  use globals
+  use parameters, only : nxmin, nxmax, nymin, nymax, nzmin, nzmax, nghost,  &
+                         nbMaxProc, neqtot, ncells_x, ncells_y, ncells_z
+  use constants
+  use globals, only : logu, localBlocks
   implicit none
 
   real, intent(in) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
@@ -122,14 +123,13 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
   integer :: i, j, k, istat
 
   badcells = 0
-
-
+  
   ! Physical cells
   if ((cells.eq.CELLS_ALL).or.(cells.eq.CELLS_PHYS)) then
 
-    do i=1,ncells_x
+    do k=1,ncells_z
       do j=1,ncells_y
-        do k=1,ncells_z
+        do i=1,ncells_x
           call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
           if (istat.ne.0) badcells = badcells + 1
         end do
@@ -142,73 +142,79 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
   if ((cells.eq.CELLS_ALL).or.(cells.eq.CELLS_GHOST)) then
 
     ! Left ghost cells
-    do i=1-nghost,0
-      do j=1,ncells_y
-        do k=1,ncells_z
+    do k=nzmin,nzmax  !1,ncells_z
+      do j=nymin, nymax!1,ncells_y
+        do i=1-nghost,0
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
     ! Right ghost cells
-    do i=ncells_x+1,ncells_x+2
-      do j=1,ncells_y
-        do k=1,ncells_z
+    do k=nzmin, nzmax!1,ncells_z
+      do j=nymin, nymax!1,ncells_y
+        do i=ncells_x+1,ncells_x+2
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
     ! Front ghost cells
-    do i=1,ncells_x
+    do k=nzmin, nzmax!1,ncells_z
       do j=1-nghost,0
-        do k=1,ncells_z
+        do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
     ! Back ghost cells
-    do i=1,ncells_x
+    do k=nzmin, nzmax!1,ncells_z
       do j=ncells_y+1,ncells_y+2
-        do k=1,ncells_z
+        do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
     ! Bottom ghost cells
-    do i=1,ncells_x
-      do j=1,ncells_y
-        do k=1-nghost,0
+    do k=1-nghost,0
+      do j=nymin, nymax!1,ncells_y
+        do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
     ! Bottom ghost cells
-    do i=1,ncells_x
-      do j=1,ncells_y
-        do k=ncells_z+1,ncells_z+2
+    do k=ncells_z+1,ncells_z+2
+      do j=nymin, nymax!1,ncells_y
+        do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
+            if (istat.ne.0) badcells = badcells + 1
           end if
         end do
       end do
     end do
 
   end if
-
+  
   if ((cells.ne.CELLS_ALL).and.(cells.ne.CELLS_PHYS).and.(cells.ne.CELLS_GHOST)) then
     write(logu,*) "Invalid cell range passed to updatePrimBlock!"
     write(logu,*) "***Aborting!***"
@@ -250,7 +256,7 @@ end subroutine calcTemp
 !> @param uvars(neqtot) An output vector containing (rho,rho*u,rho*v,rho*w,E,s1,s2,...)
 subroutine prim2flow (pvars, uvars)
 
-  use parameters
+  use parameters, only : neqtot, firstpas, CV, npassive, mhd
   implicit none
 
   real, intent(in) :: pvars(neqtot)
@@ -276,14 +282,13 @@ subroutine prim2flow (pvars, uvars)
   uvars(8) = pvars(8)
 #endif
 
-  if (npassive.ge.1) then
+  if (npassive >= 1) then
     uvars(firstpas:neqtot) = pvars(firstpas:neqtot)
   end if
 
   return
 
 end subroutine prim2flow
-
 
 !===============================================================================
 
@@ -305,8 +310,8 @@ subroutine flow2prim (uvars, pvars, istat)
 
   istat = 0
 
-  if (uvars(1).eq.0.0) then
-    write(logu,*) "Received zero density!!"
+  if (uvars(1)==0.0) then
+    write(logu,*) "Received zero density (in flow2prim)!!"
     call clean_abort(ERROR_DIVISION_BY_ZERO)
   end if
 
@@ -323,13 +328,13 @@ subroutine flow2prim (uvars, pvars, istat)
   end if
 
   ! Floor on pressure
-  if (pvars(5).lt.1.0e-30) then
+  if (pvars(5) < 1.0e-30) then
     pvars(5) = 1.0e-30
     istat = 1
   end if
 
   ! Floor on density
-  if (pvars(1).lt.1.0e-40) then
+  if (pvars(1) < 1.0e-40) then
     pvars(1) = 1.0e-40
     istat = 2
   end if
@@ -340,7 +345,7 @@ subroutine flow2prim (uvars, pvars, istat)
   pvars(8) = uvars(8)
 #endif
 
-  if (npassive.ge.1) then
+  if (npassive >= 1) then
     pvars(firstpas:neqtot) = uvars(firstpas:neqtot)
   end if
 
@@ -397,7 +402,7 @@ subroutine prim2fluxes (pvars, dimens, flux)
     - pvars1(6)*( pvars1(2)*pvars1(6)+pvars1(3)*pvars1(7)+pvars1(4)*pvars1(8) )
   end if
 
-  if (npassive.ge.1) then
+  if (npassive >= 1) then
     flux(firstpas:neqtot) = pvars1(2)*pvars1(firstpas:neqtot)
   end if
 
@@ -484,7 +489,6 @@ subroutine sound (pvars, csound)
   return
 
 end subroutine sound
-
 
 !=======================================================================
 
