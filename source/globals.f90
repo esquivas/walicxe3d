@@ -99,9 +99,6 @@ module globals
   real, allocatable :: PRIM(:,:,:,:,:)    !< Primitives
 
   ! Auxiliary data arrays
-  real, allocatable :: F (:,:,:,:)      !< Physical flux along x
-  real, allocatable :: G (:,:,:,:)      !< Physical flux along y
-  real, allocatable :: H (:,:,:,:)      !< Physical flux along z
   real, allocatable :: FC (:,:,:,:)     !< Numerical flux along x
   real, allocatable :: GC (:,:,:,:)     !< Numerical flux along y
   real, allocatable :: HC (:,:,:,:)     !< Numerical flux along z
