@@ -64,7 +64,7 @@ program Walicxe3D
   ! Distribute base load among all processors
   call loadBalance ()
 
-  ! Update primitives
+  ! Update primitives (with Us array in all cells)
   call updatePrims ()
 
   ! Write initial condition to disk
@@ -106,6 +106,7 @@ program Walicxe3D
       call writeOutput(nextout)
       nextout = nextout + 1
       dumpout = .false. ! until next time
+
     end if
 
     ! Report progress
