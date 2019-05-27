@@ -51,12 +51,12 @@ module parameters
   character(*), parameter :: warm_file = ""
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs =  8
+  integer, parameter :: nProcs =  4
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
   ! Note that 1 MB = 1024 kB = 1024*1024 or 2^20 bytes
-  real, parameter :: RAM_per_proc = 512  !1024
+  real, parameter :: RAM_per_proc = 512
 
   ! ============================================
   ! Adaptive Mesh parameters
@@ -64,8 +64,8 @@ module parameters
 
   ! Simulation domain physical size (all in cgs)
   real, parameter :: xphystot = 1.0     !< Physical domain size along x
-  real, parameter :: yphystot = 1.0     !< Physical domain size along y
-  real, parameter :: zphystot = 1./16.     !< Physical domain size along z
+  real, parameter :: yphystot = 16./512. !< Physical domain size along y
+  real, parameter :: zphystot = 16./512. !< Physical domain size along z
 
   ! Mesh Geometry
 
@@ -88,7 +88,7 @@ module parameters
   ! Specify the maximum number of cells desired at the highest refinement
   ! level
   ! > MUST BE POWERS OF TWO! <
-  integer, parameter :: p_maxcells_x = 256
+  integer, parameter :: p_maxcells_x = 512
   integer, parameter :: p_maxcells_y = 16
   integer, parameter :: p_maxcells_z = 16
 
@@ -114,13 +114,13 @@ module parameters
   ! but increases the amount of communication.
   ! MUST be a power of two. A good value is 16.
   integer, parameter :: ncells_block = 16
-
+  
   ! Refinement / Coarsening thresholds
   ! These are the maximum relative gradients required to mark a block for
   ! either refinement or coarsening. Note: refineThres must be larger than
   ! twice coarseThres. Good values are 0.3 and 0.03.
-  real, parameter :: refineThres = 0.1           !< Refinement threshold
-  real, parameter :: coarseThres = 0.01          !< Coarsening threshold
+  real, parameter :: refineThres = 0.3           !< Refinement threshold
+  real, parameter :: coarseThres = 0.03          !< Coarsening threshold
 
   ! ============================================
   ! Boundary conditions
@@ -166,7 +166,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlle-FCD-1st_ord/"
+  character(*), parameter :: datadir = "./hlld-nc-4Pamr/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -195,9 +195,9 @@ module parameters
   logical,  parameter :: mhd = .true.
   !>  If MHD enabled the divergence cleaning schemes are the following:
   !      1) Include terms proportional to DIV B (powell et al. 1999)
-  logical, parameter :: eight_wave = .true.
+  logical, parameter :: eight_wave = .false.
   !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
-  logical, parameter :: enable_flux_cd = .true.
+  logical, parameter :: enable_flux_cd = .false.
 
   !> Numerical Integrator
   !! Currently recognized options:
@@ -209,7 +209,7 @@ module parameters
   !!  Magnetohydrodynamic Solvers (MHD, active B field)
   !!    SOLVER_HLLE: HLLE Riemann solver (second order)
   !!    SOLVER_HLLD: HLLD Riemann solver (second order)
-  integer, parameter :: solver_type = SOLVER_HLLE
+  integer, parameter :: solver_type = SOLVER_HLLD
 
   !> Slope Limiter (to be used with the 2nd order HLL* solvers)
   !! Currently recognized options:
@@ -221,8 +221,9 @@ module parameters
   !!  LIMITER_UMIST: UMIST limiter
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
-  integer, parameter :: limiter_type = LIMITER_NO_AVERAGE
-
+  integer, parameter :: limiter_type = LIMITER_MINMOD
+  
+  
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
 
@@ -231,10 +232,10 @@ module parameters
   integer, parameter :: npassive = 1
 
   !> Courant-Friedrichs-Lewis parameter (0 < CFL < 1.0)
-  real, parameter :: CFL = 0.3
+  real, parameter :: CFL = 0.4
 
   !> Artificial viscosity
-  real, parameter :: visc_eta = 0.01
+  real, parameter :: visc_eta = 0.0
 
   ! ============================================
   ! Radiative Cooling
@@ -261,7 +262,7 @@ module parameters
   ! ============================================
 
   !> Heat capacity ratio (5/3 for monoatomic ideal gas)
-  real, parameter :: gamma = 2.
+  real, parameter :: gamma = 5./3.
   !> Mean atomic mass of *neutral* gas (in AMUs)
   real, parameter :: mu0 = 1.3
   !> Mean atomic mass of *ionized* gas (in AMUs)
