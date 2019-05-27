@@ -387,29 +387,29 @@ subroutine initmain ()
 
   ! Allocate memory and initialize auxiliary data arrays
 
-  allocate( F(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  F(:,:,:,:) = 0.0
-  if (istat.ne.0) then
-    write(logu,'(a)') "Couldn't allocate memory for F array!"
-    write(logu,*) "***ABORTING***"
-    call clean_abort (ERROR_NOALLOC_BIGARR)
-  end if
-
-  allocate( G(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  G(:,:,:,:) = 0.0
-  if (istat.ne.0) then
-    write(logu,'(a)') "Couldn't allocate memory for G array!"
-    write(logu,*) "***ABORTING***"
-    call clean_abort (ERROR_NOALLOC_BIGARR)
-  end if
-
-  allocate( H(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  H(:,:,:,:) = 0.0
-  if (istat.ne.0) then
-    write(logu,'(a)') "Couldn't allocate memory for H array!"
-    write(logu,*) "***ABORTING***"
-    call clean_abort (ERROR_NOALLOC_BIGARR)
-  end if
+  !!allocate( F(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
+  !!F(:,:,:,:) = 0.0
+  !!if (istat.ne.0) then
+  !!  write(logu,'(a)') "Couldn't allocate memory for F array!"
+  !!  write(logu,*) "***ABORTING***"
+  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
+  !!end if
+!!
+  !!allocate( G(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
+  !!G(:,:,:,:) = 0.0
+  !!if (istat.ne.0) then
+  !!  write(logu,'(a)') "Couldn't allocate memory for G array!"
+  !!  write(logu,*) "***ABORTING***"
+  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
+  !!end if
+!!
+  !!allocate( H(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
+  !!H(:,:,:,:) = 0.0
+  !!if (istat.ne.0) then
+  !!  write(logu,'(a)') "Couldn't allocate memory for H array!"
+  !!  write(logu,*) "***ABORTING***"
+  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
+  !!end if
 
   allocate( FC(neqtot, nxmin:nxmax, nxmin:nxmax, nxmin:nxmax), stat=istat)
   FC(:,:,:,:) = 0.0
@@ -473,10 +473,10 @@ subroutine initmain ()
     write(logu,'(1x,a,f6.1,a)') "U:      ", sizeof(U)/(1024.*1024.), " MB"
     write(logu,'(1x,a,f6.1,a)') "UP:     ", sizeof(UP)/(1024.*1024.), " MB"
     write(logu,'(1x,a,f6.1,a)') "PRIM:   ", sizeof(PRIM)/(1024.*1024.), " MB"
-    write(logu,'(1x,a,f6.1,a)') "Fluxes: ", (sizeof(F)+sizeof(G)+sizeof(H)+&
-    sizeof(FC)+sizeof(GC)+sizeof(HC))/(1024.*1024.), " MB"
-    totalsize = (sizeof(U)+sizeof(UP)+sizeof(PRIM)+sizeof(F)+sizeof(G)+&
-    sizeof(H)+sizeof(FC)+sizeof(GC)+sizeof(HC))/(1024.*1024.)
+    write(logu,'(1x,a,f6.1,a)') "Fluxes: ", (sizeof(FC)+sizeof(GC)+sizeof(HC))&
+                                          /(1024.*1024.), " MB"
+    totalsize = (sizeof(U)+sizeof(UP)+sizeof(PRIM)+sizeof(FC)+sizeof(GC)  &
+    +sizeof(HC))/(1024.*1024.)
     write(logu,'(1x,a,f7.1,a,f7.1,a)') "Total: ", totalsize, " MB / ", &
     RAM_per_proc, "MB"
   endif
