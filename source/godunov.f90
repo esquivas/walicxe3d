@@ -62,7 +62,7 @@ subroutine Godunov (order)
   ! -----------------------------------
   ! 1st-order timestep
 
-  ! Halve timestep for first part of second-order HLL
+  ! Halve timestep for first part of second-order Godonov type solver
   if (order.eq.2) then
     dtp = dt/2.0
   else
@@ -135,9 +135,11 @@ subroutine Godunov (order)
     if (verbosity > 1) then
       write(logu,*) ""
       write(logu,'(1x,a)') "> Exchanging 2-deep boundary layers ..."
-      call boundary (2, UP)
     end if
-      if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
+    
+    call boundary (2, UP)
+    
+    if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
     ! Update primitives in ghost cells
     call calcPrimsAll (UP, PRIM, CELLS_ALL)
