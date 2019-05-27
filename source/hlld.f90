@@ -56,7 +56,6 @@ subroutine HLLDfluxes (locIndx, order)
   use parameters
   use globals
   use hydro_core, only : swapxy, swapxz, limiter
-  use amr, only : validCell
   implicit none
 
   integer, intent(in) :: locIndx
@@ -64,7 +63,7 @@ subroutine HLLDfluxes (locIndx, order)
 
   integer :: i, j, k
   real :: pl(neqtot), pr(neqtot), pll(neqtot), prr(neqtot), ff(neqtot)
-  logical :: valid
+  !logical :: valid
 
   ! First-order method
   select case (order)
@@ -73,39 +72,34 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (1)   ! First-order
 
-    do i=0,ncells_x
+    do k=0,ncells_z
       do j=0,ncells_y
-        do k=0,ncells_z
+        do i=0,ncells_x
 
-          call validCell (i,j,k,valid)
-          if (valid) then
-
-            ! X dimension
-            pl(:) = PRIM(locIndx,:,i,j,k)
-            pr(:) = PRIM(locIndx,:,i+1,j,k)
-            call primfhlld (pL, pR, ff)
-            FC(:,i,j,k) = ff(:)
-
-            ! Y dimension
-            pL(:) = PRIM(locIndx,:,i,j,k)
-            pR(:) = PRIM(locIndx,:,i,j+1,k)
-            call swapxy (pL)
-            call swapxy (pR)
-            call primfhlld (pL, pR, ff)
-            call swapxy (ff)
-            GC(:,i,j,k) = ff(:)
-
-            ! Z dimension
-            pL(:) = PRIM(locIndx,:,i,j,k)
-            pR(:) = PRIM(locIndx,:,i,j,k+1)
-            call swapxz (pL)
-            call swapxz (pR)
-            call primfhlld (pL, pR, ff)
-            call swapxz (ff)
-            HC(:,i,j,k) = ff(:)
-
-          end if
-
+          ! X dimension
+          pl(:) = PRIM(locIndx,:,i,j,k)
+          pr(:) = PRIM(locIndx,:,i+1,j,k)
+          call primfhlld (pL, pR, ff)
+          FC(:,i,j,k) = ff(:)
+          
+          ! Y dimension
+          pL(:) = PRIM(locIndx,:,i,j,k)
+          pR(:) = PRIM(locIndx,:,i,j+1,k)
+          call swapxy (pL)
+          call swapxy (pR)
+          call primfhlld (pL, pR, ff)
+          call swapxy (ff)
+          GC(:,i,j,k) = ff(:)
+          
+          ! Z dimension
+          pL(:) = PRIM(locIndx,:,i,j,k)
+          pR(:) = PRIM(locIndx,:,i,j,k+1)
+          call swapxz (pL)
+          call swapxz (pR)
+          call primfhlld (pL, pR, ff)
+          call swapxz (ff)
+          HC(:,i,j,k) = ff(:)
+        
         end do
       end do
     end do
@@ -114,52 +108,47 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (2)  ! Second-order - requires limiter
 
-    do i=0,ncells_x
+    do k=0,ncells_z
       do j=0,ncells_y
-        do k=0,ncells_z
+        do i=0,ncells_x
 
-          call validCell (i,j,k,valid)
-          if (valid) then
-
-            ! X dimension
-            pll(:) = PRIM(locIndx,:,i-1,j,k)
-            pl(:)  = PRIM(locIndx,:,i,  j,k)
-            pr(:)  = PRIM(locIndx,:,i+1,j,k)
-            prr(:) = PRIM(locIndx,:,i+2,j,k)
-            call limiter (pll,pl,pr,prr,limiter_type,neqtot)
-            call primfhlld (pl, pr, ff)
-            FC(:,i,j,k) = ff(:)
-
-            ! Y dimension
-            pll(:) = PRIM(locIndx,:,i,j-1,k)
-            pl(:)  = PRIM(locIndx,:,i,j  ,k)
-            pr(:)  = PRIM(locIndx,:,i,j+1,k)
-            prr(:) = PRIM(locIndx,:,i,j+2,k)
-            call swapxy (pll)
-            call swapxy (pl)
-            call swapxy (pr)
-            call swapxy (prr)
-            call limiter (pll,pl,pr,prr,limiter_type,neqtot)
-            call primfhlld (pl, pr, ff)
-            call swapxy (ff)
-            GC(:,i,j,k) = ff(:)
-
-            ! Z dimension
-            pll(:) = PRIM(locIndx,:,i,j,k-1)
-            pl(:)  = PRIM(locIndx,:,i,j,k  )
-            pr(:)  = PRIM(locIndx,:,i,j,k+1)
-            prr(:) = PRIM(locIndx,:,i,j,k+2)
-            call swapxz (pll)
-            call swapxz (pl)
-            call swapxz (pr)
-            call swapxz (prr)
-            call limiter (pll,pl,pr,prr,limiter_type,neqtot)
-            call primfhlld (pl, pr, ff)
-            call swapxz (ff)
-            HC(:,i,j,k) = ff(:)
-
-          end if
-
+          ! X dimension
+          pll(:) = PRIM(locIndx,:,i-1,j,k)
+          pl(:)  = PRIM(locIndx,:,i,  j,k)
+          pr(:)  = PRIM(locIndx,:,i+1,j,k)
+          prr(:) = PRIM(locIndx,:,i+2,j,k)
+          call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+          call primfhlld (pl, pr, ff)
+          FC(:,i,j,k) = ff(:)
+          
+          ! Y dimension
+          pll(:) = PRIM(locIndx,:,i,j-1,k)
+          pl(:)  = PRIM(locIndx,:,i,j  ,k)
+          pr(:)  = PRIM(locIndx,:,i,j+1,k)
+          prr(:) = PRIM(locIndx,:,i,j+2,k)
+          call swapxy (pll)
+          call swapxy (pl)
+          call swapxy (pr)
+          call swapxy (prr)
+          call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+          call primfhlld (pl, pr, ff)
+          call swapxy (ff)
+          GC(:,i,j,k) = ff(:)
+          
+          ! Z dimension
+          pll(:) = PRIM(locIndx,:,i,j,k-1)
+          pl(:)  = PRIM(locIndx,:,i,j,k  )
+          pr(:)  = PRIM(locIndx,:,i,j,k+1)
+          prr(:) = PRIM(locIndx,:,i,j,k+2)
+          call swapxz (pll)
+          call swapxz (pl)
+          call swapxz (pr)
+          call swapxz (prr)
+          call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+          call primfhlld (pl, pr, ff)
+          call swapxz (ff)
+          HC(:,i,j,k) = ff(:)
+          
         end do
       end do
     end do
@@ -446,8 +435,10 @@ subroutine primfhlld(priml,primr,ff)
     return
   endif
 
-  write(logu,'(a,5es12.3)') 'Error in HLLD routine', sM,sl,sr, csl, csr
-  call clean_abort(ERROR_NAN_IN_FLUXES)
+  !write(logu,'(a,5es12.3)') 'Error in HLLD routine', sM,sl,sr, csl, csr
+  !write(logu,*) "priml:", priml
+  !write(logu,*) "primr:", primR
+  !call clean_abort(ERROR_NAN_IN_FLUXES)
   !stop
 
 end subroutine primfhlld
