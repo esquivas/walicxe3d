@@ -42,6 +42,7 @@ subroutine initmain ()
 
   use parameters
   use globals
+  use user, only : initializeUserModule
   use tictoc
   use clean_quit, only : clean_abort
   use coolingModule, only : loadcooldata, loadcooldata_metal
@@ -387,30 +388,6 @@ subroutine initmain ()
 
   ! Allocate memory and initialize auxiliary data arrays
 
-  !!allocate( F(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  !!F(:,:,:,:) = 0.0
-  !!if (istat.ne.0) then
-  !!  write(logu,'(a)') "Couldn't allocate memory for F array!"
-  !!  write(logu,*) "***ABORTING***"
-  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
-  !!end if
-!!
-  !!allocate( G(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  !!G(:,:,:,:) = 0.0
-  !!if (istat.ne.0) then
-  !!  write(logu,'(a)') "Couldn't allocate memory for G array!"
-  !!  write(logu,*) "***ABORTING***"
-  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
-  !!end if
-!!
-  !!allocate( H(neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
-  !!H(:,:,:,:) = 0.0
-  !!if (istat.ne.0) then
-  !!  write(logu,'(a)') "Couldn't allocate memory for H array!"
-  !!  write(logu,*) "***ABORTING***"
-  !!  call clean_abort (ERROR_NOALLOC_BIGARR)
-  !!end if
-
   allocate( FC(neqtot, nxmin:nxmax, nxmin:nxmax, nxmin:nxmax), stat=istat)
   FC(:,:,:,:) = 0.0
   if (istat.ne.0) then
@@ -487,6 +464,9 @@ subroutine initmain ()
   time = 0.0
   it = 0
   nextout = 0
+
+  ! initialiuze vaiables and modules defined by user
+  call initializeUserModule()
 
   ! =================================
   if (verbosity > 3) then
@@ -775,7 +755,7 @@ subroutine basegrid ()
 
     ! Activate root blocks and initialize block registry
     if (verbosity > 2) write(logu,'(1x,a)') "> Creating root blocks ..."
-    
+
     ! Calculate bID of root blocks and register them in master's block list
     if (rank.eq.master) then
       nb = 1
@@ -795,10 +775,10 @@ subroutine basegrid ()
         end do
       end do
     end if
-    
+
     ! Synchronize block lists
     call syncBlockLists ()
-    
+
   else
 
     if (verbosity > 2) write(logu,*) ""
