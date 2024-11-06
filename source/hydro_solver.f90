@@ -107,9 +107,9 @@ subroutine hydroSolver ()
   if (verbosity > 3) write(logu,*) ""
   if (verbosity > 3) write(logu,'(1x,a,a)') "Integrator (total)=", nicetoc(mark1)
 
-  ! Step hydro variables
+  ! Step hydro variables, and adds artificial viscosity
   if (verbosity > 3) call tic(mark1)
-  call doStep()
+  call doViscousStep()
   if (verbosity > 3) write(logu,*) "Stepping=", nicetoc(mark1)
 
   ! Done
@@ -212,7 +212,7 @@ end subroutine getTimestep
 
 !> @brief Advances simulation by one timestep
 !> and includes viscosity applied with the time advanced vars
-subroutine doStep ()
+subroutine doViscousStep ()
 
   use parameters
   use globals
@@ -226,15 +226,17 @@ subroutine doStep ()
     bID = localBlocks(nb)
     if (bID.ne.-1) then
 
-      do i=1,ncells_x
+      do k=1,ncells_z
         do j=1,ncells_y
-          do k=1,ncells_z
+          do i=1,ncells_x
             do ieq =1,neqtot
-            U(nb,ieq,i,j,k) = UP(nb,ieq,i,j,k) + 0.*visc_eta*(             &
-                            + UP(nb,ieq,i+1,j,k) + UP(nb,ieq,i-1,j,k)   &
-                            + UP(nb,ieq,i,j+1,k) + UP(nb,ieq,i,j-1,k)   &
-                            + UP(nb,ieq,i,j,k+1) + UP(nb,ieq,i,j,k-1)   &
-                            - 6.0*UP(nb,ieq,i,j,k)        )
+
+    U(nb,ieq,i,j,k) = UP(nb,ieq,i,j,k)   + visc_eta*  (              &
+                              + UP(nb,ieq,i+1,j,k) + UP(nb,ieq,i-1,j,k)        &
+                              + UP(nb,ieq,i,j+1,k) + UP(nb,ieq,i,j-1,k)        &
+                              + UP(nb,ieq,i,j,k+1) + UP(nb,ieq,i,j,k-1)        &
+                              - 6.0*UP(nb,ieq,i,j,k)        )
+
             end do
           end do
         end do
@@ -243,7 +245,7 @@ subroutine doStep ()
     end if
   end do
 
-end subroutine doStep
+end subroutine doViscousStep
 
 !===============================================================================
 
