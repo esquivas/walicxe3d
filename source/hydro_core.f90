@@ -67,7 +67,7 @@ end subroutine updatePrims
 subroutine calcPrimsAll (uvars, pvars, cells)
 
   use parameters, only : nxmin, nxmax, nymin, nymax, nzmin, nzmax, &
-                         nbMaxProc, neqtot
+                         nbMaxProc, neqtot, verbosity
   use globals, only : logu, localBlocks
   implicit none
 
@@ -76,7 +76,6 @@ subroutine calcPrimsAll (uvars, pvars, cells)
   integer, intent(in) :: cells
 
   integer :: nb, bID, badcells
-  logical, parameter :: verbose=.true.
 
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
@@ -85,7 +84,7 @@ subroutine calcPrimsAll (uvars, pvars, cells)
       badcells = 0
       call calcPrimsBlock (uvars, pvars, nb, cells, badcells)
 
-      if ((verbose).and.(badcells.ne.0)) then
+      if ((verbosity > 1).and.(badcells.ne.0)) then
         write(logu,'(1x,a,i0,a,i0)') "Warning: ", badcells, &
         " pressure corrections in block ", bID
       end if
@@ -123,7 +122,7 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
   integer :: i, j, k, istat
 
   badcells = 0
-  
+
   ! Physical cells
   if ((cells.eq.CELLS_ALL).or.(cells.eq.CELLS_PHYS)) then
 
@@ -214,7 +213,7 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
     end do
 
   end if
-  
+
   if ((cells.ne.CELLS_ALL).and.(cells.ne.CELLS_PHYS).and.(cells.ne.CELLS_GHOST)) then
     write(logu,*) "Invalid cell range passed to updatePrimBlock!"
     write(logu,*) "***Aborting!***"
@@ -238,11 +237,33 @@ subroutine calcTemp (pvars, temp)
   real, intent(in) :: pvars(neqtot)
   real, intent(out) :: temp
 
-  temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
+  EOS : select case(eos_type)
 
-  if (temp.gt.ion_thres) then
-    temp = pvars(5)/pvars(1)*(mui*AMU*p_sc/d_sc/KB)
-  end if
+    case(EOS_ADIABATIC)
+      !  Ideal gas
+      temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
+
+    case(EOS_SINGLE_SPECIE)
+     !  Ideal gas
+      temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
+    
+    case(EOS_TWOTEMP)
+      !  Ideal gas, two mu's above/below ionization threshold
+      temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
+
+       if (temp.gt.ion_thres) then
+         temp = pvars(5)/pvars(1)*(mui*AMU*p_sc/d_sc/KB)
+       end if
+
+    case(EOS_H_RATE)
+      !  uses P = (n_HI + nHII) K T ; (assumes ne=n_HII)
+      !  assumes that firstpass contains the neutral H density
+      if (npassive >= 1) then
+        temp   = pvars(5)/( 2.0*pvars(1)/mu0 - pvars(firstpas) ) * p_sc/KB
+        ! *d_sc/mH  [cm^-3]
+      end if
+
+  end select EOS
 
   return
 
@@ -269,14 +290,15 @@ subroutine prim2flow (pvars, uvars)
   uvars(3) = pvars(1)*pvars(3)
   uvars(4) = pvars(1)*pvars(4)
 
+
   v2 = pvars(2)**2 + pvars(3)**2 + pvars(4)**2
   uvars(5) = 0.5*pvars(1)*v2 + CV*pvars(5)
 
+#ifdef BFIELD
   if (mhd) then
     uvars(5) = uvars(5) + 0.5 * ( pvars(6)**2 + pvars(7)**2 + pvars(8)**2 )
   end if
 
-#ifdef BFIELD
   uvars(6) = pvars(6)
   uvars(7) = pvars(7)
   uvars(8) = pvars(8)
@@ -320,12 +342,14 @@ subroutine flow2prim (uvars, pvars, istat)
   pvars(3) = uvars(3)/uvars(1)
   pvars(4) = uvars(4)/uvars(1)
 
-  pvars(5) = (uvars(5) -                                               &
-             0.5* (uvars(2)**2+uvars(3)**2+uvars(4)**2)/uvars(1) ) / CV
+  pvars(5) = ( uvars(5) -                                               &
+             0.5* (uvars(2)**2 + uvars(3)**2 + uvars(4)**2) /uvars(1) ) / cv
 
+#ifdef BFIELD
   if (mhd) then
-    pvars(5) = pvars(5) - 0.5*( uvars(6)**2+uvars(7)**2+uvars(8)**2 ) / cv
+    pvars(5) = pvars(5) - 0.5*(uvars(6)**2 + uvars(7)**2 + uvars(8)**2) / cv
   end if
+#endif
 
   ! Floor on pressure
   if (pvars(5) < 1.0e-30) then
@@ -392,7 +416,6 @@ subroutine prim2fluxes (pvars, dimens, flux)
   flux(6) = 0.
   flux(7) = pvars1(2)*pvars1(7) - pvars1(3)*pvars1(6)
   flux(8) = pvars1(2)*pvars1(8) - pvars1(4)*pvars1(6)
-#endif
 
   if (mhd) then
     flux(2) = flux(2) + 0.5 *( pvars1(7)**2 + pvars1(8)**2 - pvars1(6)**2 )
@@ -401,6 +424,7 @@ subroutine prim2fluxes (pvars, dimens, flux)
     flux(5) = flux(5) + pvars1(2)*(pvars1(6)**2+pvars1(7)**2+pvars1(8)**2)     &
     - pvars1(6)*( pvars1(2)*pvars1(6)+pvars1(3)*pvars1(7)+pvars1(4)*pvars1(8) )
   end if
+#endif
 
   if (npassive >= 1) then
     flux(firstpas:neqtot) = pvars1(2)*pvars1(firstpas:neqtot)
@@ -550,31 +574,31 @@ end subroutine cfastX
 !> @param bIndx Block's local index
 !> @param U Flow variables at t^n
 !> @param UP Flow variables at t^(n+1)
-subroutine viscosity (bIndx, U, UP)
-
-  use parameters
-  implicit none
-
-  integer, intent(in) :: bIndx
-  real, intent(in) :: U (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
-  real, intent(inout) :: UP (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
-
-  integer :: i, j, k
-
-  do i=1,ncells_x
-    do j=1,ncells_y
-      do k=1,ncells_z
-        UP(bIndx,:,i,j,k)   &
-          = UP(bIndx,:,i,j,k) + visc_eta*(   &
-          + U(bIndx,:,i+1,j,k) + U(bIndx,:,i-1,j,k)   &
-          + U(bIndx,:,i,j+1,k) + U(bIndx,:,i,j-1,k)   &
-          + U(bIndx,:,i,j,k+1) + U(bIndx,:,i,j,k-1)   &
-          - 6.0*U(bIndx,:,i,j,k) )
-      end do
-    end do
-  end do
-
-end subroutine viscosity
+!!subroutine viscosity (bIndx, U, UP)
+!!
+!!  use parameters
+!!  implicit none
+!!
+!!  integer, intent(in) :: bIndx
+!!  real, intent(in) :: U (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+!!  real, intent(inout) :: UP (nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+!!
+!!  integer :: i, j, k
+!!
+!!  do i=1,ncells_x
+!!    do j=1,ncells_y
+!!      do k=1,ncells_z
+!!        UP(bIndx,:,i,j,k)   &
+!!          = UP(bIndx,:,i,j,k) + visc_eta*(   &
+!!          + U(bIndx,:,i+1,j,k) + U(bIndx,:,i-1,j,k)   &
+!!          + U(bIndx,:,i,j+1,k) + U(bIndx,:,i,j-1,k)   &
+!!          + U(bIndx,:,i,j,k+1) + U(bIndx,:,i,j,k-1)   &
+!!          - 6.0*U(bIndx,:,i,j,k) )
+!!      end do
+!!    end do
+!!  end do
+!!
+!!end subroutine viscosity
 
 !===============================================================================
 
