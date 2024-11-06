@@ -105,7 +105,7 @@ module constants
   integer, parameter :: COOL_TABLE       = 1  !< Tabulated cooling, Lambda(T)
   integer, parameter :: COOL_TABLE_METAL = 2  !< Tabulated cooling, Lambda(T,Z)
   integer, parameter :: COOL_H           = 3  !< Biro et al. Lambda(T,Y)
-  integer, parameter :: COOL_SCHURE      = 4  !< Schure et al. Lambda(T, Y for low T)
+  integer, parameter :: COOL_SCHURE      = 4  !< Schure et al. 2009 ; Lambda(T, Y for low T)
 
   ! Output concurrency types
   integer, parameter :: OUT_SIMULT = 0
