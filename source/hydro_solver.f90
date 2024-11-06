@@ -104,6 +104,8 @@ subroutine hydroSolver ()
 
   end select
 
+  ! At this point the result is stored in UP arrays
+
   if (verbosity > 3) write(logu,*) ""
   if (verbosity > 3) write(logu,'(1x,a,a)') "Integrator (total)=", nicetoc(mark1)
 
