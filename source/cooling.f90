@@ -77,7 +77,7 @@ subroutine cooling
 
     case (COOL_SCHURE)
 
-      ! Apply tabulated Schure cooling to all local blocks
+      ! Apply tabulated Schure+2009 cooling to all local blocks
       do nb=1,nbMaxProc
         bID = localBlocks(nb)
         if (bID.ne.-1) then
