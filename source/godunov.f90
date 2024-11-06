@@ -45,7 +45,7 @@ subroutine Godunov (order)
   use parameters
   use globals
   use tictoc
-  use hydro_core, only : calcPrimsAll, viscosity
+  use hydro_core, only : calcPrimsAll
   use boundaries, only : boundary
   use HLL,        only : HLLfluxes
   use HLLC,       only : HLLCfluxes
@@ -136,9 +136,9 @@ subroutine Godunov (order)
       write(logu,*) ""
       write(logu,'(1x,a)') "> Exchanging 2-deep boundary layers ..."
     end if
-    
+
     call boundary (2, UP)
-    
+
     if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
     ! Update primitives in ghost cells
@@ -175,9 +175,6 @@ subroutine Godunov (order)
 
         ! Apply conservative formula
         call upwindStep (bIndx, dt)
-
-        ! Apply numerical viscosity
-        call viscosity (bIndx, U, UP)
 
         bcount = bcount + 1
 
