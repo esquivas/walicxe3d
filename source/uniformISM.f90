@@ -47,6 +47,7 @@ module uniformISM
   ! The variables have the following meanings:
   ! mu = mean atomic mass per particle (amu)
   ! metal = ISM metallicity (ignored if cooling type is not COOL_TABLE_METAL)
+  ! y0   = ISM neutral fraction (used if EOS_H_RATE is enabled)
   ! dens = ISM mass density (g/cm^3)
   ! temp = ISM temperature (K)
   ! vx   = ISM velocity x-component (cm/s)
@@ -60,6 +61,7 @@ module uniformISM
 
     real :: mu    = mu0
     real :: metal = 1.0
+    real :: y0    = 0.9999  ! (neutral, only a small ion seed)
     real :: dens
     real :: temp
     real :: vx
@@ -84,10 +86,11 @@ contains
   !> @param uvars Full flow variables array to be modified (U or UP)
   subroutine impose_uniform_ism (ism_params, uvars)
 
-    use constants,  only : AMU, KB, COOL_TABLE_METAL
+    use constants,  only : AMU, KB, COOL_TABLE_METAL, EOS_H_RATE
     use globals,    only : localBlocks, logu
     use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin,&
-                           nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas, verbosity
+                           nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas,     &
+                           verbosity, firstpas, eos_type
     use hydro_core, only : prim2flow
 
     implicit none
@@ -95,7 +98,7 @@ contains
     real, intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
 
     integer :: nb, bID, i, j, k
-    real    :: dens, pres, temp, vx, vy, vz, mu, metal
+    real    :: dens, pres, temp, vx, vy, vz, mu, y0, metal
 #ifdef BFIELD
     real    :: bx, by, bz
 #endif
@@ -116,6 +119,7 @@ contains
     bz    = ism_params%bz
 #endif
     metal = ism_params%metal
+    y0    = ism_params%y0
 
     pres = dens/(mu*AMU)*KB*temp
 
@@ -147,6 +151,11 @@ contains
                 ! Passive scalar for metalicity
                 if (cooling_type.eq.COOL_TABLE_METAL) then
                   primit(metalpas) = metal*primit(1)
+                end if
+
+                !  Passive scalar for H_rate (neutral fraction)
+                if (eos_type == EOS_H_RATE) then
+                  primit(firstpas) = y0*primit(1)
                 end if
 
                 ! Convert primitives and set flow vars for this cell
