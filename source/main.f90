@@ -43,6 +43,7 @@ program Walicxe3D
   use hydro_solver,  only : hydroSolver
   use coolingModule, only : cooling
   use report,        only : main_report
+  use hrate,         only : updateNeutralFraction
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
@@ -91,6 +92,9 @@ program Walicxe3D
 
     ! Update primitives in all blocks
     call updatePrims ()
+
+    ! Update ionization fraction - chemistry
+    if (eos_type == EOS_H_RATE) call updateNeutralFraction ()
 
     ! Radiative cooling
     call cooling ()
