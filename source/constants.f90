@@ -93,10 +93,19 @@ module constants
   integer, parameter :: LIMITER_WOODWARD   =  5  !< Woodoward limiter
   integer, parameter :: LIMITER_SUPERBEE   =  6  !< Superbee limiter
 
+  !  Equations of state
+  integer, parameter :: EOS_ADIABATIC     = 0  !< Does not modify P; T=(P/rho)
+  integer, parameter :: EOS_SINGLE_SPECIE = 1  !< Uses only n (to use with tabulated cooling curves)
+  integer, parameter :: EOS_TWOTEMP       = 2  !< Uses two different mu above/below ion_thres
+  integer, parameter :: EOS_H_RATE        = 3  !< Using n_HI and n_HII
+  !integer, parameter :: EOS_CHEM          =4   !< To use with chemical network
+
   ! Cooling algorithms
-  integer, parameter :: COOL_NONE = 0      !< No radiative cooling
-  integer, parameter :: COOL_TABLE = 1     !< Tabulated cooling, Lambda(T)
+  integer, parameter :: COOL_NONE        = 0  !< No radiative cooling
+  integer, parameter :: COOL_TABLE       = 1  !< Tabulated cooling, Lambda(T)
   integer, parameter :: COOL_TABLE_METAL = 2  !< Tabulated cooling, Lambda(T,Z)
+  integer, parameter :: COOL_H           = 3  !< Biro et al. Lambda(T,Y)
+  integer, parameter :: COOL_SCHURE      = 4  !< Schure et al. Lambda(T, Y for low T)
 
   ! Output concurrency types
   integer, parameter :: OUT_SIMULT = 0
