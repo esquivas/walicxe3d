@@ -27,6 +27,7 @@
 
 module coolingModule
 
+  use cooling_schure
   implicit none
 
 contains
@@ -39,6 +40,7 @@ subroutine cooling
   use parameters
   use globals
   use tictoc
+  use cooling_schure, only : apply_cooling_schure
   implicit none
 
   integer :: mark, nb, bID
@@ -62,14 +64,31 @@ subroutine cooling
       do nb=1,nbMaxProc
         bID = localBlocks(nb)
         if (bID.ne.-1) then
-
           call apply_cooling (nb, maxloss)
-          if (maxloss.ge.cooling_limit) then
-            write(logu,'(1x,a,i0,a,f6.3,a,f6.3)') &
-              "Cooling warning for block ", bID, "! Max loss ", &
-              maxloss, ", limited to", cooling_limit
+          if (verbosity > 2) then
+            if (maxloss.ge.cooling_limit) then
+              write(logu,'(1x,a,i0,a,f6.3,a,f6.3)') &
+                "Cooling warning for block ", bID, "! Max loss ", &
+                maxloss, ", limited to", cooling_limit
+            end if
           end if
+        end if
+      end do
 
+    case (COOL_SCHURE)
+
+      ! Apply tabulated Schure cooling to all local blocks
+      do nb=1,nbMaxProc
+        bID = localBlocks(nb)
+        if (bID.ne.-1) then
+          call apply_cooling_schure (nb, maxloss)
+          if (verbosity > 2) then
+            if (maxloss.ge.cooling_limit) then
+              write(logu,'(1x,a,i0,a,f6.3,a,f6.3)') &
+                "Cooling warning for block ", bID, "! Max loss ", &
+                maxloss, ", limited to", cooling_limit
+            end if
+          end if
         end if
       end do
 
