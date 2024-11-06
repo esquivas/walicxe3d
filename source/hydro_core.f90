@@ -246,7 +246,7 @@ subroutine calcTemp (pvars, temp)
     case(EOS_SINGLE_SPECIE)
      !  Ideal gas
       temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
-    
+
     case(EOS_TWOTEMP)
       !  Ideal gas, two mu's above/below ionization threshold
       temp = pvars(5)/pvars(1)*(mu0*AMU*p_sc/d_sc/KB)
