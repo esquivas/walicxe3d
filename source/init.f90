@@ -42,10 +42,11 @@ subroutine initmain ()
 
   use parameters
   use globals
-  use user, only : initializeUserModule
+  !use userconds, only : initializeUserModule
   use tictoc
   use clean_quit, only : clean_abort
-  use coolingModule, only : loadcooldata, loadcooldata_metal
+  use cooling_schure, only : loadcooldata_schure
+  use coolingModule,  only : loadcooldata, loadcooldata_metal
   implicit none
 
   integer :: nps, istat, inext
@@ -231,7 +232,7 @@ subroutine initmain ()
 
     write(logu,*) ""
     write(logu,'(1x,a)') "> Boundary Conditions"
-    write(logu,'(1x,a,a)') "Left:   " , trim(bcname(bc_left))
+    write(logu,'(1x,a,a)') "Left:   ", trim(bcname(bc_left))
     write(logu,'(1x,a,a)') "Right:  ", trim(bcname(bc_right))
     write(logu,'(1x,a,a)') "Front:  ", trim(bcname(bc_front))
     write(logu,'(1x,a,a)') "Back:   ", trim(bcname(bc_back))
@@ -329,8 +330,11 @@ subroutine initmain ()
         write(logu,'(1x,a)') "Set npassive to at least 1 in parameters.f90"
         write(logu,'(1x,a)') "***ABORTING***"
         call clean_abort(ERROR_NOT_ENOUGH_PASSIVES)
-      end if
+        end if
       call loadcooldata_metal ()
+    else if (cooling_type.eq.COOL_SCHURE) then
+      write(logu,'(1x,a)') "Cooling w/Schure et al. XXXX table"
+      call loadcooldata_schure ()
     end if
   end if
 
@@ -465,8 +469,8 @@ subroutine initmain ()
   it = 0
   nextout = 0
 
-  ! initialiuze vaiables and modules defined by user
-  call initializeUserModule()
+  ! initialize vaiables and modules defined by user
+  !call initializeUserModule()
 
   ! =================================
   if (verbosity > 3) then
