@@ -89,7 +89,7 @@ contains
     use constants,  only : AMU, KB, COOL_TABLE_METAL, EOS_H_RATE
     use globals,    only : localBlocks, logu
     use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin,&
-                           nzmax, d_sc, v_sc, P_sc, cooling_type, metalpas,     &
+                           nzmax, d_sc, v_sc, P_sc, B_sc, cooling_type, metalpas,     &
                            verbosity, firstpas, eos_type
     use hydro_core, only : prim2flow
 
@@ -135,18 +135,17 @@ contains
             do k=nzmin,nzmax
 
                 ! set ansd scale primitives
-                primit(1) = dens/d_sc
+                primit(1) = mu*dens/d_sc
                 primit(2) = vx/v_sc
                 primit(3) = vy/v_sc
                 primit(4) = vz/v_sc
                 primit(5) = pres/p_sc
 
                 ! Magnetic field (if applicable)
-                !**** scling pending ****
 #ifdef BFIELD
-                primit(6) = bx
-                primit(7) = by
-                primit(8) = bz
+                primit(6) = bx/B_sc
+                primit(7) = by/B_sc
+                primit(8) = bz/B_sc
 #endif
                 ! Passive scalar for metalicity
                 if (cooling_type.eq.COOL_TABLE_METAL) then
@@ -155,7 +154,7 @@ contains
 
                 !  Passive scalar for H_rate (neutral fraction)
                 if (eos_type == EOS_H_RATE) then
-                  primit(firstpas) = y0*primit(1)
+                  primit(firstpas) = y0*dens/d_sc
                 end if
 
                 ! Convert primitives and set flow vars for this cell
