@@ -19,11 +19,12 @@ VPATH = . : ../source
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
 #USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
+USER_FLAGS= -O3 -cpp -g -traceback -check bounds -warn all
 ## gfortran-compatible flags
 #USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
 ## Generic flags
-USER_FLAGS= -O3
+#USER_FLAGS= -O3
 
 # ============================================= #
 # Compilation Time Parameters (Y=on, N=off)     #
@@ -34,10 +35,10 @@ USER_FLAGS= -O3
 MPI= Y
 
 # Use double precision for all real variables?
-DOUBLEP= Y
+DOUBLEP = Y
 
 # Enable passive magnetic (passive *or* active)
-BFIELD N
+BFIELD = N
 
 # ==============================================================================
 
@@ -49,7 +50,6 @@ MODULES_MAIN= \
 constants.o \
 parameters.o \
 globals.o \
-
 
 # Dependent source files and modules in the MAIN CODE
 OBJECTS_MAIN= \
@@ -65,6 +65,9 @@ snr.o \
 winds.o \
 orbits.o \
 user.o \
+hrate.o \
+cooling_h.o \
+cooling_schure.o \
 cooling.o \
 init.o \
 output.o \
@@ -72,6 +75,9 @@ boundary.o \
 lax.o \
 hll.o \
 hllc.o \
+hlle.o \
+hlld.o \
+sources.o \
 godunov.o \
 hydro_solver.o \
 report.o  \
