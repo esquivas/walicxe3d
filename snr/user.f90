@@ -77,6 +77,9 @@ module userconds
 !!      is called at the beginning of the simulation.
 !!   4) Optionally, fill in the subroutine userBoundary(), marked [4],
 !!      which is called at the end of each boundary exchange operation.
+!!   5) Optionally, fill the subroutine get_user_source_terms, marked [5],
+!!      which is called at the end of the upwind step. (in each half-timestep).
+!!
 !!
 !! All subroutines in this module automatically have access to the global
 !! parameters and variables.
@@ -103,8 +106,8 @@ module userconds
   type(ism_params_type) :: ism
 
   type(snr_params_type) :: snr1
-  type(snr_params_type) :: snr2
-  type(snr_params_type) :: snr3
+  !type(snr_params_type) :: snr2
+  !type(snr_params_type) :: snr3
 
   ! ============================================
 
@@ -154,55 +157,33 @@ contains
     ism%mu   = mu0
     ism%dens = 1.0 * AMU * ism%mu
     ism%temp = 1.e3
+    ism%y0   = 0.9999  ! (neutral, only a small ion seed)
     ism%vx   = 0.
     ism%vy   = 0.
     ism%vz   = 0.
-#ifdef PASB
+#ifdef BFIELD
     ism%bx   = 0.
     ism%by   = 0.
     ism%bz   = 0.
 #endif
 
     ! Parameters of the first SNR
-    snr1%xc = 5.0*PC
-    snr1%yc = 5.0*PC
-    snr1%zc = 2.5*PC
-    snr1%radius = 1.0*PC
-    snr1%mass = 4*MSUN
-    snr1%energy = 1E51
-    snr1%chi = 0.5
+    snr1%xc      = 25.0*PC
+    snr1%yc      = 25.0*PC
+    snr1%zc      = 25.0*PC
+    snr1%radius  = 1.0*PC  ! originally 1pc
+    snr1%mass    = 4*MSUN
+    snr1%energy  = 1E51
+    snr1%chi     = 0.5
     snr1%rho_env = ism%dens
-    snr1%time = 0.0
-
-    ! Parameters of the second SNR
-    snr2%xc = 5.0*PC
-    snr2%yc = 5.0*PC
-    snr2%zc = 7.5*PC
-    snr2%radius = 1.0*PC
-    snr2%mass = 1.4*MSUN
-    snr2%energy = 1E51
-    snr2%rho_env = ism%dens
-    snr2%chi = 0.5
-    snr2%time = 0.0
-
-    ! Parameters of a third SNR, to be detonated at 500 yr
-    snr3%xc = 5.0*PC
-    snr3%yc = 5.0*PC
-    snr3%zc = 5.0*PC
-    snr3%radius = 1.0*PC
-    snr3%mass = 1.4*MSUN
-    snr3%energy = 1E51
-    snr3%rho_env = ism%dens
-    snr3%chi = 0.5
-    snr3%time = 500*YR
-
+    snr1%time    = 0.0
+    snr1%y0      = 0.0   ! (fully ionized)
 
     ! fill the domain with a uniform ism
     call impose_uniform_ism(ism,uvars)
 
-    ! The first two remnants are detonated as initial conditions
+    ! The SN is detonated as initial conditions
     call detonateSNR(snr1, uvars)
-    call detonateSNRIa(snr2, uvars)
 
     ! ============================================
 
@@ -236,12 +217,133 @@ contains
     ! both become true. The armed property is set to false automatically
     ! by the subroutine (but can be reset by the user, if he so wishes).
     ! Also note how we de-scale the time variable to physical units.
-    if ((time*t_sc.ge.snr3%time).and.(snr3%armed)) then
-      call detonateSNRIa(snr3,uvars)
-    end if
+    !if ((time*t_sc.ge.snr3%time).and.(snr3%armed)) then
+    !  call detonateSNRIa(snr3,uvars)
+    !end if
+
 
     ! ============================================
 
   end subroutine userBoundary
+
+  !=============================================================================
+
+  subroutine get_user_source_terms (pp, s, i, j , k)
+    ! ============================================
+    ! [5] USER-DEFINED SOURCE TERMS
+    !
+    !> @brief User-defined Source Terms
+    !> @details This subroutine is called once per half timestep at the end
+    !! of the upwind timestep. This allows ther user to add custom S terms,
+    !! of the form:  dU/dt+dF/dx+dG/dy+dH/dz=S
+    !! useful for instance to include gravity, tidal and/or inertial forces.
+    !> @param real [in]   pp(neq) : vector of primitive variables
+    !> @param real [inout] s(neq) : vector with source terms, has to add to
+    !>  whatever is there, as other modules can add their own sources
+    !> @param integer [in] i : cell index in the X direction
+    !> @param integer [in] j : cell index in the Y direction
+    !> @param integer [in] k : cell index in the Z direction
+    !use constants,  only : Ggrav
+    use parameters, only : neqtot
+    !use globals,    only : dx, dy, dz, coords
+    !use exoplanet
+    !use radpress
+    implicit none
+    real,    intent(in   ) :: pp(neqtot)
+    real,    intent(inout) :: s (neqtot)
+    integer, intent(in   ) :: i, j, k
+
+    ! integer, parameter  :: nb=3
+    ! real    :: x(nb),y(nb),z(nb), GM(nb), rad2(nb)
+    ! integer :: index
+    ! real    :: xc ,yc, zc
+    ! real    :: GradPhi(nb), OmegaSq
+    ! real    :: rsoft
+    ! real    :: v, fracv, frac_neutro
+
+    ! rsoft = (dx*0.1)**2
+
+    ! GM(2) = Ggrav*Star%mass/rsc/vsc2
+    ! GM(1) = Ggrav*Planet%mass/rsc/vsc2
+
+    ! !   get cell position
+    ! xc = (float(i + coords(0)*nx - nxtot/2) - 0.5)*dx
+    ! yc = (float(j + coords(1)*ny - nytot/2) - 0.5)*dy
+    ! zc = (float(k + coords(2)*nz - nztot/2) - 0.5)*dz
+
+    ! ! calculate distance from the sources
+    ! ! planet
+    ! x(1) = xc - Planet%x
+    ! y(1) = yc - Planet%y
+    ! z(1) = zc - Planet%z
+    ! rad2(1) = x(1)**2 + y(1)**2 + z(1)**2
+
+    ! if(rad2(1) < rsoft)then
+    !   rad2(1) = rsoft
+    ! endif
+
+    ! ! star
+    ! x(2) = xc - Star%x
+    ! y(2) = yc - Star%y
+    ! z(2) = zc - Star%z
+    ! rad2(2) = x(2)**2 + y(2)**2 + z(2)**2
+
+    ! if(rad2(2) < rsoft)then
+    !   rad2(2) = rsoft
+    ! endif
+
+    ! ! barycenter
+    ! x(3) = xc - Barycenter%x
+    ! y(3) = 0.0 ! porque queremos la distancia en el plano orbital x,z
+    ! z(3) = zc - Barycenter%z
+    ! rad2(3) = x(3)**2 + y(3)**2 + z(3)**2
+    ! if(rad2(3) < rsoft)then
+    !   rad2(3) = rsoft
+    ! endif
+
+    ! if ( beta_pressure ) then
+    !     beta(i,j,k) = 0.
+    !     !  do only outside the planet
+    !     if( rad2(1) >= planet%radius**2 ) then
+
+    !       !Each cell feels a given pressure proportional to the neutrals fraction
+    !       frac_neutro = pp(neqdyn+1)/pp(1)
+    !       !  Radial velocity in km s^-1 at the stellar frame
+    !       v = (((pp(2)+omegap*rorb)*x(2) + pp(3)*y(2) + pp(4)*z(2))/sqrt(rad2(2)))* (vsc)
+
+    !       fracv = (v-vr(1))/(vr(Nr)-vr(1))*Nr
+    !       index = int(fracv)+1
+
+    !       if (index < 1) then
+    !         index = 1
+    !       else if ( index > Nr-1 ) then
+    !         index = Nr-1
+    !       end if
+    !       !Linear interpolation for Beta
+    !       Beta(i,j,k) = (Br(index) + (v-vr(index))*(Br(index+1)-Br(index))/(vr(index+1)-vr(index)))*frac_neutro
+    !       !Update scale factor GM
+    !       GM(2)=GM(2)*(1.-Beta(i,j,k))
+
+    !     end if
+    !   endif
+
+
+    ! OmegaSq =  ( GM(2) + GM(1) )/rorb**3
+
+    ! GradPhi(1) = GM(1)*x(1)/rad2(1)**1.5 + GM(2)*x(2)/rad2(2)**1.5 - OmegaSq*x(3)
+    ! GradPhi(2) = GM(1)*y(1)/rad2(1)**1.5 + GM(2)*y(2)/rad2(2)**1.5 - OmegaSq*y(3)
+    ! GradPhi(3) = GM(1)*z(1)/rad2(1)**1.5 + GM(2)*z(2)/rad2(2)**1.5 - OmegaSq*z(3)
+
+    ! !  update source terms with gravity
+    ! s(2)= s(2) - pp(1)*GradPhi(1) - 2*pp(1) * sqrt(OmegaSq) * pp(4)
+    ! s(3)= s(3) - pp(1)*GradPhi(2) ! 0
+    ! s(4)= s(4) - pp(1)*GradPhi(3) + 2*pp(1) * sqrt(OmegaSq) * pp(2)
+
+    ! ! energy
+    ! s(5)= s(5) - pp(1)*(pp(2)*GradPhi(1) + pp(3)*GradPhi(2) + pp(4)*GradPhi(3))
+
+    ! ============================================
+
+  end subroutine get_user_source_terms
 
 end module userconds
