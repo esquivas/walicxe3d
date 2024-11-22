@@ -33,17 +33,16 @@ module sources
 contains
 
   !=======================================================================
-
-  !> @brief Computes div(B)
-  !> @details Computes div(B)
-  !> @param integer [in] i : cell index in the X direction
-  !> @param integer [in] j : cell index in the Y direction
-  !> @param integer [in] k : cell index in the Z direction
-  !> @param real [out] d :: div(B)
-
 #ifdef BFIELD
 
   subroutine divergence_B(locIndx,lev,i,j,k,div)
+
+    !> @brief Computes div(B)
+    !> @details Computes div(B)
+    !> @param integer [in] i : cell index in the X direction
+    !> @param integer [in] j : cell index in the Y direction
+    !> @param integer [in] k : cell index in the Z direction
+    !> @param real [out] d :: div(B)
     use globals
     implicit none
     integer, intent(in) :: locIndx,lev,i,j,k
@@ -58,18 +57,17 @@ contains
 #endif
 
   !=======================================================================
-
-  !> @brief 8 Wave source terms for div(B) correction
-  !> @details  Adds terms proportional to div B in Faraday's Law,
-  !! momentum equation and energy equation as propoes in Powell et al. 1999
-  !> @param integer [in] i : cell index in the X direction
-  !> @param integer [in] j : cell index in the Y direction
-  !> @param integer [in] k : cell index in the Z direction
-  !> @param real [out] s(neq) : vector with source terms
-
 #ifdef BFIELD
 
   subroutine divbcorr_8w_source(locIndx,lev,i,j,k,s)
+
+    !> @brief 8 Wave source terms for div(B) correction
+    !> @details  Adds terms proportional to div B in Faraday's Law,
+    !! momentum equation and energy equation as propoes in Powell et al. 1999
+    !> @param integer [in] i : cell index in the X direction
+    !> @param integer [in] j : cell index in the Y direction
+    !> @param integer [in] k : cell index in the Z direction
+    !> @param real [out] s(neq) : vector with source terms
     use parameters, only : neqtot
     use globals,    only : prim
     implicit none
@@ -99,41 +97,40 @@ contains
 #endif
 
   !=======================================================================
-  !> @brief Upper level wrapper for sources
-  !> @details Upper level wrapper for sources
-  !! @n Main driver, this is called from the upwind stepping
-  !> @param integer [in] locIndx : local index of current block
-  !> @param integer [in] lev     : level of refinement of currrent block
-  !> @param integer [in] i       : cell index in the X direction
-  !> @param integer [in] j       : cell index in the Y direction
-  !> @param integer [in] k       : cell index in the Z direction
-  !> @param real [in] prim(neq) : vector of primitive variables
-  !> @param real [out] s(neq) : vector with source terms
+  subroutine source_function(locIndx,lev,i,j,k,s)
 
-subroutine source_function(locIndx,lev,i,j,k,s)
-  use parameters, only : neqtot, user_source_terms, eight_wave
-  use userconds, only : get_user_source_terms
-  use globals,   only : PRIM
-  implicit none
-  integer, intent(in)  :: locIndx, lev, i, j, k
-  real, intent(out)    :: s(neqtot)
-  !real :: x, y, z, r
+    !> @brief Upper level wrapper for sources
+    !> @details Upper level wrapper for sources
+    !! @n Main driver, this is called from the upwind stepping
+    !> @param integer [in] locIndx : local index of current block
+    !> @param integer [in] lev     : level of refinement of currrent block
+    !> @param integer [in] i       : cell index in the X direction
+    !> @param integer [in] j       : cell index in the Y direction
+    !> @param integer [in] k       : cell index in the Z direction
+    !> @param real [in] prim(neq) : vector of primitive variables
+    !> @param real [out] s(neq) : vector with source terms
+    use parameters, only : neqtot, user_source_terms, eight_wave
+    use userconds, only : get_user_source_terms
+    use globals,   only : PRIM
+    implicit none
+    integer, intent(in)  :: locIndx, lev, i, j, k
+    real, intent(out)    :: s(neqtot)
+    !real :: x, y, z, r
 
-  ! resets the source terms
-  s(:) = 0.
+    ! resets the source terms
+    s(:) = 0.
 
-  !  user source terms (such as gravity, tidal or inertial forces)
-  if (user_source_terms) call get_user_source_terms(PRIM(locIndx,:,i,j,k),s,i,j,k)
-
+    !  user source terms (such as gravity, tidal or inertial forces)
+    if (user_source_terms) call get_user_source_terms(PRIM(locIndx,:,i,j,k),s,i,j,k)
 
 #ifdef BFIELD
-  !  divergence correction Powell et al. 1999
-  if (eight_wave) call divbcorr_8w_source(locIndx,lev,i,j,k,s)
+    !  divergence correction Powell et al. 1999
+    if (eight_wave) call divbcorr_8w_source(locIndx,lev,i,j,k,s)
 #endif
 
-  return
+    return
 
-end subroutine source_function
+  end subroutine source_function
 
 !===============================================================================
 
