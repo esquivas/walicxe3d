@@ -206,7 +206,7 @@ subroutine upwindStep (locIndx, dtp)
   implicit none
 
   integer, intent(in) :: locIndx
-  real, intent(in) :: dtp
+  real,    intent(in) :: dtp
 
   integer :: i, j, k, bID, lev
   integer :: ieq   ! DEBUG
@@ -225,8 +225,8 @@ subroutine upwindStep (locIndx, dtp)
   do i=1,ncells_x
     do j=1,ncells_y
       do k=1,ncells_z
-! DEBUG
-! Check FC, GC and HC values for NaNs
+
+! DEBUG Check FC, GC and HC values for NaNs
 if (debug_mode) then
   do ieq=1,neqtot
     if (FC(ieq,i-1,j,k).ne.FC(ieq,i-1,j,k)) then
@@ -255,17 +255,19 @@ if (debug_mode) then
     end if
   end do
 end if
-! DEBUG
-        UP(locIndx,:,i,j,k)   &
-          = U(locIndx,:,i,j,k)   &
-          + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))   &
-          + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))   &
-          + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
 
-        if (eight_wave) then
-          s(:) = 0.
-          call divbcorr_8w_source(locIndx,lev,i,j,k,s)
-          UP(locIndx,:,i,j,k)= UP(locIndx,:,i,j,k)+dtp*s(:)
+        UP(locIndx,:,i,j,k) = U(locIndx,:,i,j,k)                              &
+                            + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))                &
+                            + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))                &
+                            + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
+
+        !! Include source terms S
+        !! (computed with the same primitives used in the fluxes calculation)
+        if (eight_wave .or. user_source_terms ) then
+
+          call source_function(locIndx,lev,i,j,k,s)
+          UP(locIndx,:,i,j,k) = UP(locIndx,:,i,j,k) + dtp*s(:)
+
         end if
 
       end do
