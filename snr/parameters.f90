@@ -48,13 +48,13 @@ module parameters
   ! Execution parameters
   ! ============================================
 
-  real, parameter :: tfin = 1000 * YR      !< Final integration time (s)
-  real, parameter :: dtout = 100 * YR     !< Time between data dumps (s)
+  real, parameter :: tfin =  50000 * YR     !< Final integration time (s)
+  real, parameter :: dtout = 10000 * YR     !< Time between data dumps (s)
 
   !> Perform warm start?
   logical, parameter :: dowarm = .false.
   !> State file to use for warm start
-  character(*), parameter :: warm_file = ""
+  character(*), parameter :: warm_file = "" !"./output/State.0002.dat"
 
   !> Number of MPI processes to launch
   integer, parameter :: nProcs =  16
@@ -62,16 +62,16 @@ module parameters
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
   ! Note that 1 MB = 1024 kB = 1024*1024 or 2^20 bytes
-  real, parameter :: RAM_per_proc = 1024
+  real, parameter :: RAM_per_proc = 2048
 
   ! ============================================
   ! Adaptive Mesh parameters
   ! ============================================
 
   ! Simulation domain physical size (all in cgs)
-  real, parameter :: xphystot = 10.0 * PC      !< Physical domain size along x
-  real, parameter :: yphystot = 10.0 * PC      !< Physical domain size along y
-  real, parameter :: zphystot = 10.0 * PC      !< Physical domain size along z
+  real, parameter :: xphystot = 50.0 * PC      !< Physical domain size along x
+  real, parameter :: yphystot = 50.0 * PC      !< Physical domain size along y
+  real, parameter :: zphystot = 50.0 * PC      !< Physical domain size along z
 
   ! Mesh Geometry
 
@@ -94,9 +94,9 @@ module parameters
   ! Specify the maximum number of cells desired at the highest refinement
   ! level
   ! > MUST BE POWERS OF TWO! <
-  integer, parameter :: p_maxcells_x = 128
-  integer, parameter :: p_maxcells_y = 128
-  integer, parameter :: p_maxcells_z = 128
+  integer, parameter :: p_maxcells_x = 256
+  integer, parameter :: p_maxcells_y = 256
+  integer, parameter :: p_maxcells_z = 256
 
   ! -- OR --
 
@@ -106,7 +106,7 @@ module parameters
   integer, parameter :: p_nbrootx = 1
   integer, parameter :: p_nbrooty = 1
   integer, parameter :: p_nbrootz = 1
-  integer, parameter :: p_maxlev = 5
+  integer, parameter :: p_maxlev  = 5
 
   ! Other Mesh Parameters
 
@@ -119,7 +119,7 @@ module parameters
   ! and 2) having a lot of small blocks, which makes the AMR very efficient
   ! but increases the amount of communication.
   ! MUST be a power of two. A good value is 16.
-  integer, parameter :: ncells_block = 8
+  integer, parameter :: ncells_block = 16
 
   ! Refinement / Coarsening thresholds
   ! These are the maximum relative gradients required to mark a block for
@@ -143,6 +143,15 @@ module parameters
   integer, parameter :: bc_bottom = BC_FREE_FLOW     !< BC on BOTTOM face
   integer, parameter :: bc_top    = BC_FREE_FLOW     !< BC on TOP face
 
+  !============================================
+  ! Additional source terms
+  !============================================
+
+  ! Set to .true. to include additional source terms defined by user
+  ! (e.g. Gravity, tidal or inertial forces)
+  ! They should be included in userconds module in the
+  ! 'get_user_source_terms' subroutine
+  logical, parameter :: user_source_terms = .false.
 
   ! ============================================
   ! Data output and logging
@@ -150,7 +159,7 @@ module parameters
 
   ! Data output formats
   !> Output in native Walicxe3D binary format (required for warm starts)?
-  logical, parameter :: output_bin = .true.
+  logical, parameter :: output_bin = .false.
   !> Output in VisIt-compatible VTK format?
   logical, parameter :: output_vtk = .true.
 
@@ -158,7 +167,7 @@ module parameters
   !! Currently recognized options:
   !!  OUT_SIMULT: all ranks write output simultaneously
   !!  OUT_TURNS: ranks take turns to write output
-  integer, parameter :: output_mode = OUT_SIMULT
+  integer, parameter :: output_mode = OUT_TURNS
 
   !> Write outputs using physical or code units?
   !! Currently recognized options:
@@ -172,7 +181,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./output/"
+  character(*), parameter :: datadir = "./hrate/output/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -183,11 +192,28 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir = "./logs/"!datadir
+  character(*), parameter :: logdir = "./hrate/logs/"!datadir
+
+  !> Set verbosity level
+  !!   level 0 : Almost Null Only error messages and crucial warnings
+  !!   level 1 : Minimal (Initial Report,current iteration, and output info)
+  !!   level 2 : Display (or log) when enters different subroutines
+  !!   level 3 : Display (or log) info within such subroutines
+  !!   level 4 : Display detailed timing info
+  integer, parameter :: verbosity = 1
 
   ! ============================================
   ! Solver parameters
   ! ============================================
+
+  !  Active MHD is still under development
+  !> Enable Active Magnetic field
+  logical,  parameter :: mhd = .false.
+  !>  If MHD enabled the divergence cleaning schemes are the following:
+  !      1) Include terms proportional to DIV B (powell et al. 1999)
+  logical, parameter :: eight_wave = .false.
+  !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
+  logical, parameter :: enable_flux_cd = .false.
 
   !> Numerical Integrator
   !! Currently recognized options:
@@ -206,7 +232,10 @@ module parameters
   !!  LIMITER_UMIST: UMIST limiter
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
-  integer, parameter :: limiter_type = LIMITER_VANLEER
+  !!  Magnetohydrodynamic Solvers (MHD, active B field)
+  !!    SOLVER_HLLE: HLLE Riemann solver (second order)
+  !!    SOLVER_HLLD: HLLD Riemann solver (second order)
+  integer, parameter :: limiter_type = LIMITER_MINMOD
 
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
@@ -222,6 +251,19 @@ module parameters
   real, parameter :: visc_eta = 5.0E-3
 
   ! ============================================
+  ! Equation of state
+  ! ============================================
+
+  !> Equation of state Type (used to compute T)
+  ! Currently recognized options:
+  ! EOS_ADIABATIC     : Does not modify P, and T=(P/rho)
+  ! EOS_SINGLE_SPECIE : Uses P=nKT (e.g. to use with tabulated cooling curves)
+  ! EOS_TWOTEMP       : Uses the approximation of two mu's (above/below 'ion_thresh')
+  ! EOS_H_RATE        : Using n_HI and n_HII
+  ! EOS_CHEM          : Enables a full chemical network
+  integer, parameter :: eos_type = EOS_H_RATE
+
+  ! ============================================
   ! Radiative Cooling
   ! ============================================
 
@@ -230,16 +272,26 @@ module parameters
   !  COOL_NONE: no radiative cooling
   !  COOL_TABLE: tabulated cooling function (temperature only)
   !  COOL_TABLE_METAL: tabulated cooling function (temperature and metallicity)
-  integer, parameter :: cooling_type = COOL_NONE
+  !  COOL_H: Biro et al. prescription (temperature and ionization fraction)
+  !  COOL_SCHURE: tabulated cooling function from Schure+2...
+  integer, parameter :: cooling_type = COOL_H
 
   !> Filename with table of cooling coefficients
   ! Some cooling tables are provided in the cooling/ subdirectory.
-  character(*), parameter :: cooling_file = "./cooling/CHIANTIMazotta.dat"
+  character(*), parameter :: cooling_file =  "../tables/coolingSKKKV.dat"
 
   !> Maximum *fractional* thermal energy loss allowed in a single cell
   !! per timestep.
   ! This helps prevent negative pressure errors.
   real, parameter :: cooling_limit = 0.5
+
+  !> The following selects the column of the ionization fraction used for low T
+  !! in the Schure et al. cooling curves
+  !> dmc_f = 1 : f_i = 1e-4
+  !>         2 : f_i = 1e-3
+  !>         3 : f_i = 1e-2
+  !>         4 : f_i = 1e-1
+  real, parameter :: dmc_f = 1
 
   ! ============================================
   ! General gas parameters
@@ -247,8 +299,12 @@ module parameters
 
   !> Heat capacity ratio (5/3 for monoatomic ideal gas)
   real, parameter :: gamma = 5.0/3.0
-  !> Mean atomic mass of *neutral* gas (in AMUs)
+
+  !> Mean atomic mass (in AMUs)
+  !! For EOS_TWOTEMP corresponds to that of bellow ion_thres (mu0~1.3)
   real, parameter :: mu0 = 1.3
+
+  !! The following parameters are limited to a particular EOS_TWOTEMP
   !> Mean atomic mass of *ionized* gas (in AMUs)
   real, parameter :: mui = 0.61
   !> Gas is considered ionized above this temp (in K)
@@ -356,5 +412,6 @@ module parameters
   real, parameter :: p_sc = d_sc*v_sc**2
   real, parameter :: e_sc = p_sc
   real, parameter :: t_sc = l_sc/v_sc
+  real, parameter :: B_sc = sqrt(4.0*pi*p_sc)
 
 end module parameters
