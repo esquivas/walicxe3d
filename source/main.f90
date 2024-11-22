@@ -93,7 +93,7 @@ program Walicxe3D
     ! Update primitives in all blocks
     call updatePrims ()
 
-    ! Update ionization fraction - chemistry
+    ! Update ionization fraction / chemistry
     if (eos_type == EOS_H_RATE) call updateNeutralFraction ()
 
     ! Radiative cooling
