@@ -49,9 +49,10 @@ subroutine Godunov (order)
   use boundaries, only : boundary
   use HLL,        only : HLLfluxes
   use HLLC,       only : HLLCfluxes
+#ifdef BFIELD
   use HLLE,       only : HLLEfluxes
   use HLLD,       only : HLLDfluxes
-
+#endif
   implicit none
 
   integer, intent(in) :: order
@@ -200,7 +201,7 @@ subroutine upwindStep (locIndx, dtp)
   use parameters
   use globals
   use clean_quit, only : clean_abort
-  use sources,    only : divbcorr_8w_source
+  use sources
   use amr, only : meshlevel
   implicit none
 
