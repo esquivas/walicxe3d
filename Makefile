@@ -8,18 +8,23 @@ PROGRAM= Walicxe3D
 # Non-MPI Compiler
 # Supported options: gfortran, ifort
 # For MPI, mpfi90 is used
-#COMPILER= ifort
-COMPILER= gfortran
+COMPILER= ifort
+#COMPILER= gfortran
+
+
+#  Search Path for Makefile, object files are searched in the order below
+VPATH = . : ../source
 
 # Additional user compiler flags
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
 #USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
+USER_FLAGS= -O3 -cpp -g -traceback -check bounds -warn all
 ## gfortran-compatible flags
 #USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
 ## Generic flags
-USER_FLAGS= -O3
+#USER_FLAGS= -O3
 
 # ============================================= #
 # Compilation Time Parameters (Y=on, N=off)     #
@@ -30,62 +35,61 @@ USER_FLAGS= -O3
 MPI= Y
 
 # Use double precision for all real variables?
-DOUBLEP= Y
+DOUBLEP = Y
 
-# Enable passive magnetic field?
-PASB= N
+# Enable passive magnetic (passive *or* active)
+BFIELD = N
 
 # ==============================================================================
 
 # Additional USER modules to compile
 MODULES_USER= \
 
-
 # Independently compilable modules in the MAIN CODE
 MODULES_MAIN= \
-./source/constants.o \
-./source/parameters.o \
-./source/globals.o \
-./source/snr.o \
-./source/winds.o \
-./source/orbits.o \
-./source/user.o
+constants.o \
+parameters.o \
+globals.o \
 
 # Dependent source files and modules in the MAIN CODE
 OBJECTS_MAIN= \
-./source/initflow.o \
-./source/tictoc.o \
-./source/admesh.o \
-./source/initmain.o \
-./source/basegrid.o \
-./source/boundary.o \
-./source/loadbalance.o \
-./source/hilbert.o \
-./source/deinit.o \
-./source/output.o \
-./source/utils.o \
-./source/cut.o \
-./source/prims.o \
-./source/hydro.o \
-./source/godunov.o \
-./source/lax.o \
-./source/hll.o \
-./source/hllc.o \
-./source/cooling.o \
-./source/warmstart.o \
-./source/report.o \
-./source/main.o
+tictoc.o \
+clean_quit.o \
+hydro_core.o \
+utils.o \
+hilbert.o \
+amr.o \
+loadbalance.o \
+uniformISM.o  \
+snr.o \
+winds.o \
+orbits.o \
+user.o \
+hrate.o \
+cooling_h.o \
+cooling_schure.o \
+cooling.o \
+init.o \
+output.o \
+boundary.o \
+lax.o \
+hll.o \
+hllc.o \
+godunov.o \
+hydro_solver.o \
+report.o  \
+main.o
 
 # List of modules and objects to compile the Column Density facility
 OBJECTS_COLDENS= \
-./source/constants.o \
-./source/utils.o \
-./source/coldens.o
+constants.o \
+utils.o \
+coldens.o
 
 # List of modules and objects to compile the Data Extractor facility
 OBJECTS_EXTRACT= \
-./source/utils.o \
-./source/extract.o
+utils.o \
+extract.o
 
 # ==============================================================================
 # THERE SHOULD BE NO NEED TO MODIFY BELOW THIS LINE
@@ -111,8 +115,8 @@ endif
 endif
 
 # MPI
-ifeq ($(PASB),Y)
-CFLAGS += -DPASBP
+ifeq ($(BFIELD),Y)
+CFLAGS += -DBFIELD
 endif
 
 # Set mpif90 as compiler if MPI, otherwise use specified
@@ -121,7 +125,7 @@ COMPILER = mpif90
 endif
 
 # Join object lists
-OBJECTS_ALL = ${MODULES_MAIN} ${MODULES_USER} ${OBJECTS_MAIN} 
+OBJECTS_ALL = ${MODULES_MAIN} ${MODULES_USER} ${OBJECTS_MAIN}
 
 # ==============================================================================
 
@@ -129,21 +133,21 @@ $(PROGRAM) : prebuild ${OBJECTS_ALL}
 	@echo Linking object files ...
 	@$(COMPILER) $(CFLAGS) $(OBJECTS_ALL) -o $@
 	@echo Cleaning up ...
-	@rm -f *.o *.mod source/*.o source/*.mod
+	@rm -f *.o *.mod
 	@echo "Done! (`date`)"
 
 coldens : prebuild $(OBJECTS_COLDENS)
 	@echo Linking object files ...
 	@$(COMPILER) $(CFLAGS) $(OBJECTS_COLDENS) -o $@
 	@echo Cleaning up ...
-	@rm -f *.o *.mod source/*.o source/*.mod
+	@rm -f *.o *.mod
 	@echo "Done! (`date`)"
 
 extract : prebuild $(OBJECTS_EXTRACT)
 	@echo Linking object files ...
 	@$(COMPILER) $(CFLAGS) $(OBJECTS_EXTRACT) -o $@
 	@echo Cleaning up ...
-	@rm -f *.o *.mod source/*.o source/*.mod
+	@rm -f *.o *.mod
 	@echo "Done! (`date`)"
 
 prebuild :
@@ -152,12 +156,12 @@ prebuild :
 %.o : %.f90
 	@echo Compiling $^ ...
 	@$(COMPILER) $(CFLAGS) -c $^ -o $@
-  
-clean : 
-	rm -f *.o *.mod source/*.o source/*.mod
+
+clean :
+	rm -f $(PROGRAM) *.o *.mod
 
 cleanall :
-	rm -f *.o *.mod source/*.o source/*.mod
+	rm -f *.o *.mod
 	rm -f $(PROGRAM)
 	rm -f $(PROGRAM).*
 	rm -f coldens
