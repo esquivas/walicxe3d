@@ -319,7 +319,11 @@ subroutine initmain ()
   else
     if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
       if (verbosity > 0) write(logu,'(1x,a)') "> Radiative cooling is ON"
-      if (verbosity > 0) write(logu,'(2x,a,a)') "Cooling Table: ", trim(cooling_file)
+      if ( (cooling_type == COOL_TABLE) .or.                                  &
+           (cooling_type == COOL_TABLE_METAL) ) then
+        if (verbosity > 0) write(logu,'(2x,a,a)') "Cooling Table: ",       &
+                                 trim(cooling_file)
+      end if
     end if
     if (cooling_type.eq.COOL_TABLE) then
       call loadcooldata ()
@@ -333,8 +337,10 @@ subroutine initmain ()
         end if
       call loadcooldata_metal ()
     else if (cooling_type.eq.COOL_SCHURE) then
-      write(logu,'(1x,a)') "Cooling w/Schure et al. XXXX table"
+      write(logu,'(1x,a)') "Cooling w/Schure et al. 2009 table"
       call loadcooldata_schure ()
+    else if (cooling_type.eq.COOL_H) then
+      write(logu,'(1x,a)') "Cooling w/(Biro et al. 1995) prescription"
     end if
   end if
 
