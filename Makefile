@@ -75,6 +75,9 @@ boundary.o \
 lax.o \
 hll.o \
 hllc.o \
+hlle.o \
+hlld.o \
+sources.o \
 godunov.o \
 hydro_solver.o \
 report.o  \
