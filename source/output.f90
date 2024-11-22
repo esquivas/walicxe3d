@@ -277,6 +277,7 @@ subroutine write3DVTKBlocks (noutput)
   use clean_quit, only : clean_abort
   use utils,      only : replace
   use amr,        only : meshlevel, getRefCorner
+  use hydro_core, only : calcTemp
   implicit none
 
   integer, intent(in) :: noutput
@@ -288,7 +289,7 @@ subroutine write3DVTKBlocks (noutput)
   character(4) :: noutstr
   character(1) :: slash
   character(1) :: lf = char(10)
-  real :: xb, yb, zb
+  real :: xb, yb, zb, T
   real(kind=4) :: xx, yy, zz
   integer :: a, b, c, i, j, k, l, p, unitout, bID, pID, istat, nblocks
   integer :: nb, ncells, npoints, lvl, pas, pas0
@@ -659,26 +660,29 @@ subroutine write3DVTKBlocks (noutput)
   write(unitout) lf
 #endif
 
-!    ! Temperature
-!    write(cbuffer,'(A)')  "SCALARS T float 1"
-!    write(unitout) trim(cbuffer), lf
-!    write(cbuffer,'(A)')  "LOOKUP_TABLE default"
-!    write(unitout) trim(cbuffer), lf
-!    do nb=1,nbLocal
-!      do i=1,ncells_x
-!        do j=1,ncells_y
-!          do k=1,ncells_z
-!            bID = localBlocks(nb)
-!            rho = PRIM(bID,1,i,j,k)*rho_sc
-!            pres = PRIM(bID,5,i,j,k)*P_sc
-!            call calcTemp (rho, pres, 0.0, T)
-!            x = T
-!            write(unitout) x
-!          end do
-!        end do
-!      end do
-!    end do
-!    write(unitout) lf
+
+! Temperature
+if (verbosity > 2) write(logu,'(1x,a)') "Writing Temperature values ..."
+write(cbuffer,'(a)')  "SCALARS T float 1"
+write(unitout) trim(cbuffer), lf
+write(cbuffer,'(a)')  "LOOKUP_TABLE default"
+write(unitout) trim(cbuffer), lf
+do nb=1,nbMaxProc
+  bID = localBlocks(nb)
+  if (bID.ne.-1) then
+    do k=1,ncells_z
+      do j=1,ncells_y
+        do i=1,ncells_x
+          call calcTemp (PRIM(nb,:,i,j,k), T)
+          xx = real( T, 4 )
+          write(unitout) xx
+        end do
+      end do
+    end do
+  end if
+end do
+write(unitout) lf
+
 
   ! Metallicity
   if (cooling_type.eq.COOL_TABLE_METAL) then
@@ -723,7 +727,7 @@ subroutine write3DVTKBlocks (noutput)
           do j=1,ncells_y
             do i=1,ncells_x
               bID = localBlocks(nb)
-              xx = real( PRIM(nb,firstpas+pas-1,i,j,k)/PRIM(nb,1,i,j,k), 4)
+              xx = real( PRIM(nb,firstpas+pas-1,i,j,k) , 4)
               write(unitout) xx
             end do
           end do
