@@ -27,7 +27,6 @@
 
 module coolingModule
 
-  use cooling_schure
   implicit none
 
 contains
@@ -41,6 +40,7 @@ subroutine cooling
   use globals
   use tictoc
   use cooling_schure, only : apply_cooling_schure
+  use cooling_H     , only : apply_cooling_h_neq
   implicit none
 
   integer :: mark, nb, bID
@@ -82,6 +82,23 @@ subroutine cooling
         bID = localBlocks(nb)
         if (bID.ne.-1) then
           call apply_cooling_schure (nb, maxloss)
+          if (verbosity > 2) then
+            if (maxloss.ge.cooling_limit) then
+              write(logu,'(1x,a,i0,a,f6.3,a,f6.3)') &
+                "Cooling warning for block ", bID, "! Max loss ", &
+                maxloss, ", limited to", cooling_limit
+            end if
+          end if
+        end if
+      end do
+
+    case (COOL_H)
+
+      ! Apply Biro et al. 99 cooling (requires dens, T and neutral fraction)
+      do nb=1,nbMaxProc
+        bID = localBlocks(nb)
+        if (bID.ne.-1) then
+          call apply_cooling_h_neq(nb, maxloss)
           if (verbosity > 2) then
             if (maxloss.ge.cooling_limit) then
               write(logu,'(1x,a,i0,a,f6.3,a,f6.3)') &
