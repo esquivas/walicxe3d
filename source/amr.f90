@@ -53,7 +53,7 @@ subroutine admesh ()
   integer :: localFlags (nbMaxProc)
   integer :: mark
   logical :: test(nbMaxGlobal)  ! DEBUG
-  logical :: verbose = .false.
+  logical :: debug = .false.
 
   if (verbosity > 3) call tic(mark)
   if (verbosity > 1) then
@@ -90,7 +90,7 @@ subroutine admesh ()
   call mpi_allgather (localFlags, nbMaxProc, mpi_integer, &
     refineFlags, nbMaxProc, mpi_integer, mpi_comm_world, ierr)
 
-  if (verbose) then
+  if (debug) then
     test = refineFlags.eq.FLAG_REFINE
     write(logu,'(1x,i8,a)') count(test), " global blocks marked for refinement"
     test = refineFlags.eq.FLAG_COARSE
@@ -150,10 +150,8 @@ subroutine markByPhysical (locIndx, bID, flag)
   integer, intent(out) :: flag
   integer :: i, j, k, ilev
   real :: grad, maxgrad, gradx, grady, gradz
-  logical :: verbose
+  logical, parameter  :: debug = .false.
 
-  ! DEBUG
-  verbose = .false.
 
   call meshlevel (bID, ilev)
   grad = 0.0
@@ -178,7 +176,7 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! unless it is already at the maximum level; exit subroutine regardless
         if (grad.ge.refineThres) then
           if (ilev.eq.maxlev) then
-            if (verbose) then
+            if (debug) then
               write(logu,'(a,i8,a)') "Block ", bID, " can't be refined any further - you might wanna increase the number of levels"
             end if
             flag = FLAG_NONE
@@ -204,7 +202,7 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! unless it is already at the maximum level; exit subroutine regardless
         if (grad.ge.refineThres) then
           if (ilev.eq.maxlev) then
-            if (verbose) then
+            if (debug) then
               write(logu,'(a,i8,a)') "Block ", bID, " can't be refined any further - you might wanna increase the number of levels"
             end if
             flag = FLAG_NONE
@@ -1286,7 +1284,7 @@ subroutine refineZone (zone, z_level)
   real :: b_left, b_right, b_back, b_front, b_bottom, b_top
 
   ! Verbosity flag (for debugging, or if you're feeling lonely)
-  logical :: verbose = .false.
+  logical, parameter  :: debug = .false.
 
   ! Sanity check
   if (z_level.gt.maxlev) then
@@ -1314,7 +1312,7 @@ subroutine refineZone (zone, z_level)
   ! For all refinement levels up to the requestes level
   do ilev=1,z_level-1
 
-    if (verbose) then
+    if (debug) then
       write(logu,*) ""
       write(logu,*) "Checking blocks in level", ilev
       write(logu,*) "Local blocks:"
@@ -1342,7 +1340,7 @@ subroutine refineZone (zone, z_level)
         b_front = b_front * l_sc
         b_bottom = b_bottom * l_sc
 
-        if (verbose) then
+        if (debug) then
           write(logu,*) ""
           write(logu,*) "Local block", bID, "has bounding volume"
           write(logu,*) "x:", b_left, b_right
@@ -1355,16 +1353,16 @@ subroutine refineZone (zone, z_level)
           (z_front.lt.b_back).and.(z_back.gt.b_front).and.&
           (z_bottom.lt.b_top).and.(z_top.gt.b_bottom)) then
           localFlags(nb) = FLAG_REFINE
-          if (verbose) write(logu,*) "Block is contained - will be refined"
+          if (debug) write(logu,*) "Block is contained - will be refined"
         else
           localFlags(nb) = FLAG_NONE
-          if (verbose) write(logu,*) "Block is not contained"
+          if (debug) write(logu,*) "Block is not contained"
         end if
 
       end if
     end do
 
-    if (verbose) then
+    if (debug) then
       write(logu,*) "localFlags after marking"
       write(logu,*) "         bID         flag"
       do nb3=1,nbMaxProc
@@ -1378,7 +1376,7 @@ subroutine refineZone (zone, z_level)
     call mpi_allgather (localFlags, nbMaxProc, mpi_integer, &
     refineFlags, nbMaxProc, mpi_integer, mpi_comm_world, ierr)
 
-    if (verbose) then
+    if (debug) then
       write(logu,*) "refineFlags after synchronization"
       write(logu,*) "         bID         flag"
       do nb3=1,nbMaxGlobal
@@ -1392,7 +1390,7 @@ subroutine refineZone (zone, z_level)
     if (verbosity > 2) write(logu,'(1x,a)') "Doing proximity checks ..."
     call checkProximity(ilev)
 
-    if (verbose) then
+    if (debug) then
       write(logu,*) "         bID        owner        flag"
       do nb3=1,nbMaxGlobal
         if (refineFlags(nb3).ne.-1) then
@@ -1444,9 +1442,8 @@ subroutine coarseBlocks ()
   integer :: nData, mpistatus(MPI_STATUS_SIZE)
   integer :: family (nbActive,2), sib_list(8)
   real :: buf(neqtot, ncells_x/2, ncells_y/2, ncells_z/2)
-  logical :: counted, verbose
-
-  verbose = .false.
+  logical, parameter :: debug = .false.
+  logical :: counted
 
   ! 1. Build the list of families
 
@@ -1463,17 +1460,17 @@ subroutine coarseBlocks ()
     bID = globalBlocks(nb)
     if ((bID.ne.-1).and.(flag.eq.FLAG_COARSE)) then
 
-      if (verbose) write(logu,*) "Block", bID, "marked for coarsening"
+      if (debug) write(logu,*) "Block", bID, "marked for coarsening"
       ! Obtain elder sibling ID
       call siblings (bID, sib_list)
       eID = sib_list(1)
 
-      if (verbose) write(logu,*) "Family of", bID, ":", sib_list
+      if (debug) write(logu,*) "Family of", bID, ":", sib_list
       ! Check if this family is already registered. If so, increase its count.
       counted = .false.
       do nb1=1,next-1
         if (family(nb1,1).eq.eID) then
-          if (verbose) write(logu,*) bID, "'s family exists; counting block"
+          if (debug) write(logu,*) bID, "'s family exists; counting block"
           family(nb1,2) = family(nb1,2) + 1
           counted = .true.
           exit
@@ -1485,13 +1482,13 @@ subroutine coarseBlocks ()
         family(next,1) = eID
         family(next,2) = 1
         next = next + 1
-        if (verbose) write(logu,*) bID, "'s family doesnt exist; adding new family"
+        if (debug) write(logu,*) bID, "'s family doesnt exist; adding new family"
       end if
 
     end if
   end do
 
-  if (verbose) write (logu,*) "Done counting block families"
+  if (debug) write (logu,*) "Done counting block families"
 
   ! 2. Apply coarsening for any family were all 8 siblings were marked
 
@@ -1505,7 +1502,7 @@ subroutine coarseBlocks ()
       call siblings (eID, sib_list)
       call father (eID, fID)
       if (verbosity > 2) write(logu,'(1x,a,i0)') "Coarsening children of block ", fID
-      if (verbose) then
+      if (debug) then
         write(logu,*) "Elder owner:", elder_owner
         write(logu,*) "family:", sib_list
         write(logu,*) "father's bID:", fID
@@ -1514,7 +1511,7 @@ subroutine coarseBlocks ()
       ! The owner of the elder sibling allocates space for the new father block
       if (rank.eq.elder_owner) then
 
-        if (verbose) write(logu,*) "Registering new father block", fID
+        if (debug) write(logu,*) "Registering new father block", fID
         call put (fID, localBlocks, nbMaxProc, fatherIndex)
 
         if (fatherIndex.eq.-1) then
@@ -1539,7 +1536,7 @@ subroutine coarseBlocks ()
 
         sID = sib_list(sib)
         call getOwner (sID, sib_owner)
-        if (verbose) write(logu,*) "Sibling", sID, "is owned by", sib_owner
+        if (debug) write(logu,*) "Sibling", sID, "is owned by", sib_owner
 
         ! SENDER-side operations
 
@@ -1566,7 +1563,7 @@ subroutine coarseBlocks ()
           nData = neqtot*(ncells_x/2)*(ncells_y/2)*(ncells_z/2)
           call MPI_SEND ( buf, nData, mpi_real_kind, elder_owner, sID, &
             mpi_comm_world, ierr)
-          if (verbose) write(logu,*) "Sent", nData, "values to process", elder_owner
+          if (debug) write(logu,*) "Sent", nData, "values to process", elder_owner
           ! Free this sibling's local slot
           call pop (sID, localBlocks, nbMaxProc, nb1)
 
@@ -1589,7 +1586,7 @@ subroutine coarseBlocks ()
           nData = neqtot*(i2-i1+1)*(j2-j1+1)*(k2-k1+1)
           call MPI_RECV ( U(fatherIndex, 1:neqtot, i1:i2, j1:j2, k1:k2), nData, &
             mpi_real_kind, sib_owner, sID, mpi_comm_world, mpistatus, ierr)
-          if (verbose) write(logu,*) "Received", nData, "values into local space", i1,i2,j1,j2,k1,k2
+          if (debug) write(logu,*) "Received", nData, "values into local space", i1,i2,j1,j2,k1,k2
 
         ! ... or averages and copies it directly from local memory
         else if ((rank.eq.elder_owner).and.(rank.eq.sib_owner)) then
@@ -1627,14 +1624,14 @@ subroutine coarseBlocks ()
             end do
           end do
 
-          if (verbose) write(logu,*) "Averaged and copied local data"
+          if (debug) write(logu,*) "Averaged and copied local data"
 
           ! Free this sibling's local slot
           call pop (sID, localBlocks, nbMaxProc, nb1)
 
         end if
 
-        if (verbose) then
+        if (debug) then
           if ((rank.ne.elder_owner).and.(rank.ne.sib_owner)) then
             write(logu,*) "No action required."
           end if
@@ -1747,9 +1744,7 @@ subroutine doBalance ()
   integer :: mpistatus(MPI_STATUS_SIZE)
   integer :: mark
   integer :: sent, received
-  logical :: verbose
-
-  verbose = .false.
+  logical, parameter :: debug = .false.
 
   ! The goal is to build and apply the new load balancing scheme, which is
   ! containted in the loadScheme array. Its structure is:
@@ -1797,7 +1792,7 @@ subroutine doBalance ()
   end do
 
   ! DEBUG
-  if (verbose) then
+  if (debug) then
     ! Report the loadScheme
     write(logu,'(1x,a)') "The new load scheme is:"
     write(logu,'(6x,a)') "bID   old owner  ->   new owner"
@@ -1819,7 +1814,7 @@ subroutine doBalance ()
   call mpi_barrier (mpi_comm_world, ierr)
 
   ! DEBUG
-  if (verbose) then
+  if (debug) then
     write(logu,*) "There are", nbActive, "blocks globally"
     write(logu,*) "I have", nbLocal, "local blocks"
   end if
@@ -1858,7 +1853,7 @@ subroutine doBalance ()
           call clean_abort (ERROR_LOADBAL_NO_LOCAL_BID)
         end if
 
-        if (verbose) then
+        if (debug) then
           write(logu,'(1x,a,i8,a,i4,a,i4)') "Transmitting block ", bID, &
             " with local index ", nbloc, " to process ", new_owner
         end if
@@ -1880,7 +1875,7 @@ subroutine doBalance ()
           call clean_abort (ERROR_LOADBAL_INSUFFICIENT_RAM)
         end if
 
-        if (verbose) then
+        if (debug) then
           write(logu,'(1x,a,i8,a,i4,a,i4)') "Receiving block ", bID, &
             " into free local index ", nbloc, " from process ", old_owner
         end if
@@ -1915,7 +1910,7 @@ subroutine doBalance ()
   call syncBlockLists ()
 
   ! DEBUG
-  if (verbose) then
+  if (debug) then
     write(logu,*) "Local blocks after syncBlockLists:"
     do nb=1,nbMaxProc
       if (localBlocks(nb).ne.-1) then
