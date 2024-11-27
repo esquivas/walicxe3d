@@ -160,10 +160,6 @@ prebuild :
 	@echo Compiling $^ ...
 	@$(COMPILER) $(CFLAGS) -c $^ -o $@
 
-%.o : %.F90
-	@echo Compiling $^ ...
-	@$(COMPILER) $(CFLAGS) -c $^ -o $@
-
 clean :
 	rm -f $(PROGRAM) *.o *.mod
 
