@@ -110,7 +110,7 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
   use parameters, only : nxmin, nxmax, nymin, nymax, nzmin, nzmax, nghost,  &
                          nbMaxProc, neqtot, ncells_x, ncells_y, ncells_z
   use constants
-  use globals, only : logu, localBlocks
+  use globals, only : logu
   implicit none
 
   real, intent(in) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
