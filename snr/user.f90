@@ -301,33 +301,6 @@ contains
     !   rad2(3) = rsoft
     ! endif
 
-    ! if ( beta_pressure ) then
-    !     beta(i,j,k) = 0.
-    !     !  do only outside the planet
-    !     if( rad2(1) >= planet%radius**2 ) then
-
-    !       !Each cell feels a given pressure proportional to the neutrals fraction
-    !       frac_neutro = pp(neqdyn+1)/pp(1)
-    !       !  Radial velocity in km s^-1 at the stellar frame
-    !       v = (((pp(2)+omegap*rorb)*x(2) + pp(3)*y(2) + pp(4)*z(2))/sqrt(rad2(2)))* (vsc)
-
-    !       fracv = (v-vr(1))/(vr(Nr)-vr(1))*Nr
-    !       index = int(fracv)+1
-
-    !       if (index < 1) then
-    !         index = 1
-    !       else if ( index > Nr-1 ) then
-    !         index = Nr-1
-    !       end if
-    !       !Linear interpolation for Beta
-    !       Beta(i,j,k) = (Br(index) + (v-vr(index))*(Br(index+1)-Br(index))/(vr(index+1)-vr(index)))*frac_neutro
-    !       !Update scale factor GM
-    !       GM(2)=GM(2)*(1.-Beta(i,j,k))
-
-    !     end if
-    !   endif
-
-
     ! OmegaSq =  ( GM(2) + GM(1) )/rorb**3
 
     ! GradPhi(1) = GM(1)*x(1)/rad2(1)**1.5 + GM(2)*x(2)/rad2(2)**1.5 - OmegaSq*x(3)
