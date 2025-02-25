@@ -42,7 +42,7 @@ subroutine initmain ()
 
   use parameters
   use globals
-  !use userconds, only : initializeUserModule
+  use userconds, only : initializeUserModule
   use tictoc
   use clean_quit, only : clean_abort
   use cooling_schure, only : loadcooldata_schure
@@ -476,7 +476,7 @@ subroutine initmain ()
   nextout = 0
 
   ! initialize vaiables and modules defined by user
-  !call initializeUserModule()
+  call initializeUserModule()
 
   ! =================================
   if (verbosity > 3) then
