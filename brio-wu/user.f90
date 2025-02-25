@@ -104,6 +104,14 @@ module userconds
 
 contains
 
+  subroutine initializeUserModule()
+  ! ============================================
+  ! This is a wrapper to initialize external modules defined by the user
+    implicit none
+
+
+  end subroutine initializeUserModule
+
   subroutine setInitialCondition (uvars)
   ! ============================================
   ! [3] USER-DEFINED INITIAL CONDITIONS
