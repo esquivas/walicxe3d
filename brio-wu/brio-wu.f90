@@ -34,7 +34,9 @@
 !! 2) Create an object of type ism_params_type to hold the parameters of
 !!    the uniform ISM you want to impose. The descriptions of the object's
 !!    fields are given below. All fields are mandatory.
-!! 3) Whenever you want to impose the uniform ISM (most likely at t=0) call the !!    impose_uniform_ism() subroutine,  passing as arguments the snrparams !!    object and the flow variables array.
+!! 3) Whenever you want to impose the uniform ISM (most likely at t=0) call the
+!!    impose_uniform_ism() subroutine,  passing as arguments the snrparams
+!!    object and the flow variables array.
 module brio_wu
 
   implicit none
@@ -111,7 +113,7 @@ contains
                 primit(6) = bx  ! / b_sc
                 primit(7) = by  ! / b_sc
                 primit(8) = bz  ! / b_sc
-                !primit(9) = dens / d_sc
+                primit(9) = dens / d_sc
 
                 ! Convert primitives and set flow vars for this cell
                 call prim2flow (primit, flowvars)
