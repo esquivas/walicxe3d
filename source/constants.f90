@@ -40,9 +40,11 @@ module constants
   real, parameter :: AU   = 1.495978707e+13   !< Astronomical unit
   real, parameter :: YR   = 3.155673600e+7    !< Year (Earth, sidereal)
   real, parameter :: KYR  = 3.155673600e+10   !< One thousand years
+  real, parameter :: DAY  = 86400.0           !  One day
   real, parameter :: MSUN = 1.988920000e+33   !< Solar mass
   real, parameter :: KPS  = 1.0e5             !< km/s in cgs
   real, parameter :: PI   = 3.14159265358979  !< Ratio of perimeter to diameter
+  real, parameter :: RJUP = 7.1492E9          !< Jupiter radius
 
   ! Named Constants
 
