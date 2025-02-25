@@ -8,8 +8,8 @@ PROGRAM= Walicxe3D
 # Non-MPI Compiler
 # Supported options: gfortran, ifort
 # For MPI, mpfi90 is used
-#COMPILER= ifort
-COMPILER= gfortran
+COMPILER= ifort
+#COMPILER= gfortran
 
 
 #  Search Path for Makefile, object files are searched in the order below
@@ -162,7 +162,7 @@ clean :
 	rm -f $(PROGRAM) *.o *.mod
 
 cleanall :
-	rm -f *.o *.mod
+	rm -f *.o *.mod *.out *.err
 	rm -f $(PROGRAM)
 	rm -f $(PROGRAM).*
 	rm -f coldens
