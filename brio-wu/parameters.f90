@@ -51,7 +51,7 @@ module parameters
   character(*), parameter :: warm_file = ""
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs =  4
+  integer, parameter :: nProcs =  16
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
@@ -114,7 +114,7 @@ module parameters
   ! but increases the amount of communication.
   ! MUST be a power of two. A good value is 16.
   integer, parameter :: ncells_block = 16
-  
+
   ! Refinement / Coarsening thresholds
   ! These are the maximum relative gradients required to mark a block for
   ! either refinement or coarsening. Note: refineThres must be larger than
@@ -166,7 +166,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlld-nc-4Pamr/"
+  character(*), parameter :: datadir = "./hlld-8w-16p/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -194,9 +194,9 @@ module parameters
   !> Enable Active Magnetic field
   logical,  parameter :: mhd = .true.
   !>  If MHD enabled the divergence cleaning schemes are the following:
-  !      1) Include terms proportional to DIV B (powell et al. 1999)
-  logical, parameter :: eight_wave = .false.
-  !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
+  !>   1) Include terms proportional to DIV B (powell et al. 1999)
+  logical, parameter :: eight_wave = .true.
+  !>   2) Enable field-CD cleaning of div B (a bit slower, but recommended)
   logical, parameter :: enable_flux_cd = .false.
 
   !> Numerical Integrator
@@ -222,8 +222,8 @@ module parameters
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
   integer, parameter :: limiter_type = LIMITER_MINMOD
-  
-  
+
+
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
 
@@ -262,7 +262,7 @@ module parameters
   ! ============================================
 
   !> Heat capacity ratio (5/3 for monoatomic ideal gas)
-  real, parameter :: gamma = 5./3.
+  real, parameter :: gamma = 2.0 ! 5./3.
   !> Mean atomic mass of *neutral* gas (in AMUs)
   real, parameter :: mu0 = 1.3
   !> Mean atomic mass of *ionized* gas (in AMUs)
