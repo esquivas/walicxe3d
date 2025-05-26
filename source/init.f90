@@ -99,7 +99,7 @@ subroutine initmain ()
 #ifdef ifort
     inquire(directory=trim(logdir),exist=existing)
 #endif
-    if (.not.existing .and. rank ==master ) then
+    if (.not.existing .and. rank == master ) then
       write(*,'(a)') "Could not find logdir, creating it anew"
       call system('mkdir -p ' // trim(logdir) )
     end if
@@ -311,6 +311,23 @@ subroutine initmain ()
     write(logu,'(1x,a,es12.5,a)') "Time:     ", t_sc, " s"
 
   end if
+
+  !  Report the Equation of State used
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    write(logu,'(1x,a,a)') "" 
+    select case(eos_type)
+    case(EOS_ADIABATIC)
+      write(logu,'(1x,a)') "Using an adiabatic eq. of state"
+    case(EOS_SINGLE_SPECIE)
+      write(logu,'(1x,a)') "Using a single specie eq. of state"
+    case(EOS_TWOTEMP)
+      write(logu,'(1x,a)') "Using a two temperature eq. of state"
+    case(EOS_H_RATE)
+      write(logu,'(1x,a)') "Using the H rate eq. of state"
+    end select
+    write(logu,'(1x,a,a)') ""
+  end if
+  
   ! Radiative cooling
   write(logu,*) ""
   if (cooling_type.eq.COOL_NONE) then
@@ -477,10 +494,14 @@ subroutine initmain ()
 
   ! initialize vaiables and modules defined by user
   call initializeUserModule()
-
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    write(logu,'(1x,a,a)') ""
+    write(logu,'(1x,a)') "Successfully Initialized user module"
+    write(logu,'(1x,a,a)') ""
+  end if
   ! =================================
   if (verbosity > 3) then
-    write(logu,'(1x,a,a)') ""
+
     write(logu,'(1x,a,a)') "> Performed initializations and allocated big arrays in ", nicetoc(mark)
     write(logu,*) ""
   end if
