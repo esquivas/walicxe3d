@@ -37,7 +37,7 @@ module cooling_schure
 
 contains
 
-  !===============================================================================
+  !=============================================================================
 
   !> @brief Loads radiative cooling coefficients the Schure et al. tables
   !> @details Loads radiative cooling coefficients from a data file into the
@@ -46,8 +46,8 @@ contains
   !! separated by blank. The second line must contain a blank-separated list
   !! of columns (for the Schure et al. cooling they are the coefficients for
   !! different ionization fractions at low T).
-  !! Then, every subsequent line must contain, first, the temperature, and then the
-  !! corresponding cooling coefficients for each metallicity value.
+  !! Then, every subsequent line must contain, first, the temperature, and then
+  !! the corresponding cooling coefficients for each metallicity value.
 
   subroutine loadcooldata_schure ()
 
@@ -83,11 +83,13 @@ contains
 
       ! Broadcast cooling data to all processes
       if (rank.ne.master) then
-        if (verbosity > 2) write (logu,'(2x,a)') "Receiving cooling data from master process ..."
+        if (verbosity > 2) write (logu,'(2x,a)')                               &
+                                "Receiving cooling data from master process ..."
         allocate (cooltable(2,180))
       end if
       call mpi_bcast(cooltable, 180*2, mpi_real_kind, 0, mpi_comm_world, ierr)
-      if (verbosity > 1) write(logu,'(2x,a,i0,a)') "Loaded ", 180, " cooling coefficients."
+      if (verbosity > 1) write(logu,'(2x,a,i0,a)') "Loaded ", 180,             &
+                               " cooling coefficients."
 
   ! Set global vars for minimum and maximum temperatures
   ! Note that the temperatures are logarithmic
@@ -158,9 +160,11 @@ contains
   !iiHeI  = n1_chem - 1 + iHeI
   !iiHeII = n1_chem - 1 + iHeII
 
-  do i=1,ncells_x
-    do j=1,ncells_y
-      do k=1,ncells_z
+  !  Apply cooling to 1st ghost cell to avoid boundarty artifacts
+  !  when marking for refinement
+  do i=0,ncells_x+1
+    do j=0,ncells_y+1
+      do k=0,ncells_z+1
 
 
         ! Calculate temperature of this cell
@@ -172,8 +176,8 @@ contains
 
 !          if (dif_rad) then
 !            !  energy per photo ionization from Black 1981 (in erg)
-!            gain = phHI(bIndx,i,j,k)   * U(bIndx, iiHI  ,i,j,k) * 7.75e-12     &
-!                 + phHeI(bIndx,i,j,k)  * U(bIndx, iiHeI ,i,j,k) * 2.19e-11     &
+!            gain = phHI(bIndx,i,j,k)   * U(bIndx, iiHI  ,i,j,k) * 7.75e-12    &
+!                 + phHeI(bIndx,i,j,k)  * U(bIndx, iiHeI ,i,j,k) * 2.19e-11    &
 !                 + phHeII(bIndx,i,j,k) * U(bIndx, iiHeII,i,j,k) * 3.10e-11
 !
 !          else
@@ -197,10 +201,11 @@ contains
             cool_factor = 1.0-cooling_limit
           end if
 
-          !!! DEBUG 
+          !!! DEBUG
           !cool_factor = 1.0
 
-          ! !  limit changes to avoid catastrophic cooling  ! uso este o el de arriba?
+          ! !  limit changes to avoid catastrophic cooling
+          ! uso este o el de arriba?
           ! ch_factor = min(ch_factor,0.5)
           ! ch_factor = max(ch_factor,2.0)
 
@@ -213,8 +218,8 @@ contains
                                                     + PRIM(bIndx,4,i,j,k)**2)
   ! #ifdef BFIELD
   !         if (mhd) then
-  !           u(5,i,j,k) = u(5,i,j,k) + 0.5*(  primit(6,i,j,k)**2                  &
-  !                                          + primit(7,i,j,k)**2                  &
+  !           u(5,i,j,k) = u(5,i,j,k) + 0.5*(  primit(6,i,j,k)**2              &
+  !                                          + primit(7,i,j,k)**2              &
   !                                          + primit(8,i,j,k)**2  )
   !         end if
   ! #endif
