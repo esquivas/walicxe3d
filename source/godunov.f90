@@ -265,7 +265,7 @@ end if
         !! (computed with the same primitives used in the fluxes calculation)
         if (eight_wave .or. user_source_terms ) then
 
-          call source_function(locIndx,lev,i,j,k,s)
+          call source_function(bID,locIndx,lev,i,j,k,s)
           UP(locIndx,:,i,j,k) = UP(locIndx,:,i,j,k) + dtp*s(:)
 
         end if
