@@ -65,7 +65,8 @@ subroutine admesh ()
   end if
   ! Each process inspects its own active blocks and flags those that meet
   ! the physical criteria for refinement or coarsening
-  if (verbosity > 2) write(logu,'(1x,a)') "> Flagging blocks due to physical gradients ..."
+  if (verbosity > 2) write(logu,'(1x,a)')                                      &
+                               "> Flagging blocks due to physical gradients ..."
   refcount = 0
   crscount = 0
   localFlags(:) = FLAG_NONE
@@ -170,6 +171,10 @@ subroutine markByPhysical (locIndx, bID, flag)
         gradz = abs(PRIM(locIndx,5,i,j,k+1)-PRIM(locIndx,5,i,j,k-1)) / &
                 PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
         grad = max( gradx, grady, gradz )
+        !   DEBUG ##############################################################
+        !grad = 0.
+        !   DEBUG ##############################################################
+
         maxgrad = max( maxgrad, grad )
 
         ! If the gradient is larger than the refinement threshold, mark the block
@@ -420,7 +425,8 @@ subroutine syncBlockLists()
     end if
   end do
 
-  if (verbosity > 2) write(logu,'(1x,a,i0,a)') "There are ", nbActive, " active blocks globally."
+  if (verbosity > 2) write(logu,'(1x,a,i0,a)') "There are ", nbActive,         &
+                          " active blocks globally."
 
   ! Everybody stops here
   call mpi_barrier (mpi_comm_world, ierr)
@@ -527,9 +533,9 @@ end subroutine neighborLevel
 !> @brief Returns the bID of actual active neighbors of a given block
 !> @details Returns an integer neighType which describes the kind of
 !! neighbors:
-!! @n NEIGH_SAME = neighbors is as the same level of refinement
-!! @n NEIGH_COARSER = neighbors is coarser
-!! @n NEIGH_FINER = higher-level (finer) neighbors (four)
+!! @n NEIGH_SAME     = neighbors is as the same level of refinement
+!! @n NEIGH_COARSER  = neighbors is coarser
+!! @n NEIGH_FINER    = higher-level (finer) neighbors (four)
 !! @n NEIGH_BOUNDARY = simulation box boundary
 !> @param bID The (absolute) block ID of which one needs a neighbor
 !> @param dir The direction of inquiry, one of the named constants
@@ -1034,15 +1040,18 @@ end subroutine getRefCorner
 !> @param xx The x-position of the cell's physical center, in code units
 !> @param yy The y-position of the cell's physical center, in code units
 !> @param zz The z-position of the cell's physical center, in code units
-subroutine cellPos (bID, i, j, k, x, y, z)
+!> @param center, if true returns the position respect to the center of
+!> the grid, by default returns respect to one corner
+subroutine cellPos (bID, i, j, k, x, y, z, center)
 
   use parameters
   use globals
   implicit none
 
-  integer, intent(in) :: bID
-  integer, intent(in) :: i, j, k
-  real, intent(out) :: x, y, z
+  integer,           intent(in)  :: bID
+  integer,           intent(in)  :: i, j, k
+  real,              intent(out) :: x, y, z
+  logical, optional, intent(in)  :: center
 
   integer :: ilev, xb, yb, zb
 
@@ -1059,6 +1068,12 @@ subroutine cellPos (bID, i, j, k, x, y, z)
   x = ((xb-1)*ncells_x + (i-1) + 0.5) * dx(ilev)
   y = ((yb-1)*ncells_y + (j-1) + 0.5) * dy(ilev)
   z = ((zb-1)*ncells_z + (k-1) + 0.5) * dz(ilev)
+
+  if (present(center) .and. center) then
+    x = x - xphystot/2.0/l_sc
+    y = y - yphystot/2.0/l_sc
+    z = z - zphystot/2.0/l_sc
+  end if
 
   return
 
@@ -1420,6 +1435,8 @@ subroutine refineZone (zone, z_level)
     ! Done for this level - continue with next
   end do
 
+  if (verbosity > 2) write(logu,'(1x,a)') "Finished refining Zone..."
+
 end subroutine refineZone
 
 !===============================================================================
@@ -1727,6 +1744,8 @@ end subroutine absCoords
 !! Then, it builds a loadScheme, which contains a list of all the active
 !! blocks and the current and new owner for each block. Finally, it applies
 !! the computed loadScheme.
+!! skip primit optional  flag allows to use before Uvars or Primit
+!! have been set
 subroutine doBalance ()
 
   use parameters
@@ -1735,7 +1754,6 @@ subroutine doBalance ()
   use clean_quit, only : clean_abort
   use hydro_core, only : calcPrimsBlock
   implicit none
-
   integer :: loadOrder(nbMaxGlobal)
   integer :: numBlocks(0:nProcs-1)
   integer :: loadScheme(nbActive, 3), tots(nProcs)
@@ -1885,14 +1903,15 @@ subroutine doBalance ()
         localBlocks(nbloc) = bID
 
         ! Update primitives of received block
-        call calcPrimsBlock (U, PRIM, nbloc, CELLS_PHYS, badcells)
+         call calcPrimsBlock (U, PRIM, nbloc, CELLS_PHYS, badcells)
 
-        received = received + 1
+         received = received + 1
 
       end if
     end if
 
   end do
+
 
   ! Re-calculate number of local blocks
   nbLocal = 0
