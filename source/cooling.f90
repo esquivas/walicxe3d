@@ -34,7 +34,7 @@ contains
 !===============================================================================
 
 !> @brief High-level wrapper subroutine for radiative cooling
-subroutine cooling
+subroutine cooling () 
 
   use parameters
   use globals
@@ -111,7 +111,8 @@ subroutine cooling
 
     end select
 
-    if (verbosity > 3) write(logu,'(1x,a,a)') "> Cooling applied in ", nicetoc(mark)
+    if (verbosity > 3) write(logu,'(1x,a,a)') "> Cooling applied in ",         &
+                                              nicetoc(mark)
 
   end if
 
