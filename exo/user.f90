@@ -90,8 +90,8 @@ module userconds
   ! ============================================
   ! [1] Add HERE any aditional modules required by your simulation
 
+  use exoplanet
   use uniformISM
-  use exopplanet
 
   ! ============================================
   implicit none
@@ -101,23 +101,24 @@ module userconds
   ! by the user subroutines below if they they are not provided by
   ! an external module
 
-  ! We can declare the snr parameters objects here. We'll fill them out
-  ! during the initial conditions.
   type(ism_params_type) :: ism
 
+  ! We can declare the snr parameters objects here. We'll fill them out
+  ! during the initial conditions.
 
   ! ============================================
 
 contains
 
   subroutine initializeUserModule()
-    !  [1.1]  Initialize parameters for the different objects used in
-    !! the module, such as give values to the module global variables
-    implicit none
+
+    !  initialize modules loaded by user
+    call init_exo()
 
     !  uniform ISM parameters
-    ism%mu   = mu0
-    ism%dens = 1.0 * AMU * ism%mu
+    !  will be rewritten
+    ism%mu   = 1.3
+    ism%dens = 1.0
     ism%temp = 1.e3
     ism%y0   = 0.9999  ! (neutral, only a small ion seed)
     ism%vx   = 0.
@@ -173,9 +174,8 @@ contains
 
     ! ============================================
 
-
-    ! fill the domain with a uniform ism
-    call impose_uniform_ism(ism,uvars)
+      call impose_uniform_ism(ism,uvars)
+      call impose_initial_exo(uvars)
 
     ! ============================================
 
@@ -200,6 +200,7 @@ contains
   !! subroutine documentation above.
   ! ============================================
 
+    use globals,    only: time
     implicit none
     real, intent(inout) :: uvars (nbMaxProc, neqtot, &
                            nxmin:nxmax, nymin:nymax, nzmin:nzmax)
@@ -213,6 +214,7 @@ contains
     !  call detonateSNRIa(snr3,uvars)
     !end if
 
+     call impose_exo(uvars,time)
 
     ! ============================================
 
@@ -220,92 +222,94 @@ contains
 
   !=============================================================================
 
-  subroutine get_user_source_terms (pp, s, i, j , k)
+  subroutine get_user_source_terms (bID, locIndx, i, j , k, s)
     ! ============================================
     ! [5] USER-DEFINED SOURCE TERMS
     !
     !> @brief User-defined Source Terms
     !> @details This subroutine is called once per half timestep at the end
-    !! of the upwind timestep. This allows ther user to add custom S terms,
-    !! of the form:  dU/dt+dF/dx+dG/dy+dH/dz=S
-    !! useful for instance to include gravity, tidal and/or inertial forces.
-    !> @param real [in]   pp(neq) : vector of primitive variables
-    !> @param real [inout] s(neq) : vector with source terms, has to add to
+    !> of the upwind timestep. This allows ther user to add custom S terms,
+    !> of the form:  dU/dt+dF/dx+dG/dy+dH/dz=S
+    !> useful for instance to include gravity, tidal and/or inertial forces.
     !>  whatever is there, as other modules can add their own sources
+    !> @param integer [in] bID     : current block ID
+    !> @param integer [in] locIndx : local index of current block
     !> @param integer [in] i : cell index in the X direction
     !> @param integer [in] j : cell index in the Y direction
     !> @param integer [in] k : cell index in the Z direction
-    !use constants,  only : Ggrav
-    use parameters, only : neqtot
-    !use globals,    only : dx, dy, dz, coords
-    !use exoplanet
+    !> @param real [inout] s(neq) : vector with source terms, has to add to
+
+    use parameters, only : neqtot, l_sc, v_sc
+    use globals,    only : dx, maxlev, PRIM
+    use constants,   only : GGRAV
+    use amr,        only  : cellPos
+    use exoplanet
     !use radpress
     implicit none
-    real,    intent(in   ) :: pp(neqtot)
-    real,    intent(inout) :: s (neqtot)
-    integer, intent(in   ) :: i, j, k
+    integer, intent(in   ) :: bID, locIndx, i, j, k
+    real,    intent(inout) :: s(neqtot)
 
-    ! integer, parameter  :: nb=3
-    ! real    :: x(nb),y(nb),z(nb), GM(nb), rad2(nb)
-    ! integer :: index
-    ! real    :: xc ,yc, zc
-    ! real    :: GradPhi(nb), OmegaSq
-    ! real    :: rsoft
+    integer, parameter  :: nb=3
+    real    :: x(nb),y(nb),z(nb), GM(nb), rad2(nb), pp(neqtot)
+    integer :: index
+    real    :: xc ,yc, zc
+    real    :: GradPhi(nb), OmegaSq
+    real    :: rsoft
     ! real    :: v, fracv, frac_neutro
 
-    ! rsoft = (dx*0.1)**2
+    pp(:) = PRIM(locIndx,:,i,j,k)
 
-    ! GM(2) = Ggrav*Star%mass/rsc/vsc2
-    ! GM(1) = Ggrav*Planet%mass/rsc/vsc2
+    rsoft = ( 0.1*dx(maxlev) )**2
 
-    ! !   get cell position
-    ! xc = (float(i + coords(0)*nx - nxtot/2) - 0.5)*dx
-    ! yc = (float(j + coords(1)*ny - nytot/2) - 0.5)*dy
-    ! zc = (float(k + coords(2)*nz - nztot/2) - 0.5)*dz
+    GM(2) = Ggrav * Star%mass   /l_sc/(v_sc**2)
+    GM(1) = Ggrav * Planet%mass /l_sc/(v_sc**2)
 
-    ! ! calculate distance from the sources
-    ! ! planet
-    ! x(1) = xc - Planet%x
-    ! y(1) = yc - Planet%y
-    ! z(1) = zc - Planet%z
-    ! rad2(1) = x(1)**2 + y(1)**2 + z(1)**2
+    !   get cell position (respect to the center of grid)
+    call cellPos (bID, i, j, k, xc, yc, zc, center=.true.)
 
-    ! if(rad2(1) < rsoft)then
-    !   rad2(1) = rsoft
-    ! endif
+    !  calculate distance from the sources
+    !  planet
+    x(1) = xc - Planet%x
+    y(1) = yc - Planet%y
+    z(1) = zc - Planet%z
+    rad2(1) = x(1)**2 + y(1)**2 + z(1)**2
 
-    ! ! star
-    ! x(2) = xc - Star%x
-    ! y(2) = yc - Star%y
-    ! z(2) = zc - Star%z
-    ! rad2(2) = x(2)**2 + y(2)**2 + z(2)**2
+    if(rad2(1) < rsoft)then
+      rad2(1) = rsoft
+    endif
 
-    ! if(rad2(2) < rsoft)then
-    !   rad2(2) = rsoft
-    ! endif
+    ! star
+    x(2) = xc - Star%x
+    y(2) = yc - Star%y
+    z(2) = zc - Star%z
+    rad2(2) = x(2)**2 + y(2)**2 + z(2)**2
 
-    ! ! barycenter
-    ! x(3) = xc - Barycenter%x
-    ! y(3) = 0.0 ! porque queremos la distancia en el plano orbital x,z
-    ! z(3) = zc - Barycenter%z
-    ! rad2(3) = x(3)**2 + y(3)**2 + z(3)**2
-    ! if(rad2(3) < rsoft)then
-    !   rad2(3) = rsoft
-    ! endif
+    if(rad2(2) < rsoft)then
+      rad2(2) = rsoft
+    endif
 
-    ! OmegaSq =  ( GM(2) + GM(1) )/rorb**3
+    ! barycenter
+    x(3) = xc - Barycenter%x
+    y(3) = 0.0 ! porque queremos la distancia en el plano orbital x,z
+    z(3) = zc - Barycenter%z
+    rad2(3) = x(3)**2 + y(3)**2 + z(3)**2
+    if(rad2(3) < rsoft)then
+      rad2(3) = rsoft
+    endif
 
-    ! GradPhi(1) = GM(1)*x(1)/rad2(1)**1.5 + GM(2)*x(2)/rad2(2)**1.5 - OmegaSq*x(3)
-    ! GradPhi(2) = GM(1)*y(1)/rad2(1)**1.5 + GM(2)*y(2)/rad2(2)**1.5 - OmegaSq*y(3)
-    ! GradPhi(3) = GM(1)*z(1)/rad2(1)**1.5 + GM(2)*z(2)/rad2(2)**1.5 - OmegaSq*z(3)
+    OmegaSq =  ( GM(2) + GM(1) )/rorb**3
 
-    ! !  update source terms with gravity
-    ! s(2)= s(2) - pp(1)*GradPhi(1) - 2*pp(1) * sqrt(OmegaSq) * pp(4)
-    ! s(3)= s(3) - pp(1)*GradPhi(2) ! 0
-    ! s(4)= s(4) - pp(1)*GradPhi(3) + 2*pp(1) * sqrt(OmegaSq) * pp(2)
+    GradPhi(1) = GM(1)*x(1)/rad2(1)**1.5 + GM(2)*x(2)/rad2(2)**1.5 - OmegaSq*x(3)
+    GradPhi(2) = GM(1)*y(1)/rad2(1)**1.5 + GM(2)*y(2)/rad2(2)**1.5 - OmegaSq*y(3)
+    GradPhi(3) = GM(1)*z(1)/rad2(1)**1.5 + GM(2)*z(2)/rad2(2)**1.5 - OmegaSq*z(3)
 
-    ! ! energy
-    ! s(5)= s(5) - pp(1)*(pp(2)*GradPhi(1) + pp(3)*GradPhi(2) + pp(4)*GradPhi(3))
+    !  update source terms with gravity
+    s(2)= s(2) - pp(1)*GradPhi(1) - 2*pp(1) * sqrt(OmegaSq) * pp(4)
+    s(3)= s(3) - pp(1)*GradPhi(2) ! 0
+    s(4)= s(4) - pp(1)*GradPhi(3) + 2*pp(1) * sqrt(OmegaSq) * pp(2)
+
+    ! energy
+    s(5)= s(5) - pp(1)*(pp(2)*GradPhi(1) + pp(3)*GradPhi(2) + pp(4)*GradPhi(3))
 
     ! ============================================
 
