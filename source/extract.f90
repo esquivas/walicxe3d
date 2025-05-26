@@ -376,7 +376,7 @@ subroutine bounds(bID, mesh, xl, xh, yl, yh, zl, zh)
   xl = (bx-1)*xsize/(nbrootx*2**(ilev-1))
   xh = bx*xsize/(nbrootx*2**(ilev-1))
   yl = (by-1)*ysize/(nbrooty*2**(ilev-1))
-  yh = by*xsize/(nbrooty*2**(ilev-1))
+  yh = by*ysize/(nbrooty*2**(ilev-1))
   zl = (bz-1)*zsize/(nbrootz*2**(ilev-1))
   zh = bz*zsize/(nbrootz*2**(ilev-1))
 
@@ -696,7 +696,7 @@ subroutine write2Dbin (outmap, nx, ny, outfname)
   write(*,'(2x,i0,a)') size(outmap), " values in array"
 
   unitout = 10
-  open (unit=unitout,file=outfname,status='replace',form='unformatted',&
+  open (unit=unitout,file=outfname,status='replace',access='stream',&
        iostat=istat)
 
   write(unitout) outmap
