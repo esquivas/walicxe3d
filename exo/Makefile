@@ -43,22 +43,22 @@ BFIELD = N
 # ==============================================================================
 
 # Additional USER modules to compile
-MODULES_USER= \
+MODULES_USER= exo-centered.o
 
 # Independently compilable modules in the MAIN CODE
 MODULES_MAIN= \
 constants.o \
 parameters.o \
 globals.o \
-
-# Dependent source files and modules in the MAIN CODE
-OBJECTS_MAIN= \
 tictoc.o \
 clean_quit.o \
 hydro_core.o \
 utils.o \
 hilbert.o \
-amr.o \
+amr.o
+
+# Dependent source files and modules in the MAIN CODE
+OBJECTS_MAIN= \
 loadbalance.o \
 uniformISM.o  \
 snr.o \
@@ -165,6 +165,8 @@ clean :
 
 cleanall :
 	rm -f *.o *.mod
+	rm -f *.err *.out
+	rm -rf logs/*
 	rm -f $(PROGRAM)
 	rm -f $(PROGRAM).*
 	rm -f coldens
