@@ -172,9 +172,11 @@ contains
 
     dt_seconds = dt*t_sc
 
-    do i=1,ncells_x
-      do j=1,ncells_y
-        do k=1,ncells_z
+    !  Apply cooling to 1st ghost cell to avoid boundarty artifacts
+    !  when marking for refinement
+    do i=0,ncells_x+1
+      do j=0,ncells_y+1
+        do k=0,ncells_z+1
 
           !# H total density n_HT
           dh  = real( PRIM(bIndx,1,i,j,k) / mu0 ,  8)
