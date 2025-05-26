@@ -24,8 +24,8 @@
 !===============================================================================
 
 !> @brief Source terms module
-!> @details The module applies most source terms after the hydro (or MHD)
-!! timestep
+!> @details The module computes most source terms after the hydro (or MHD)
+!! timestep, they are added in upwindStep (godunov.f90)
 module sources
 
   implicit none
@@ -97,11 +97,12 @@ contains
 #endif
 
   !=======================================================================
-  subroutine source_function(locIndx,lev,i,j,k,s)
+  subroutine source_function(bID,locIndx,lev,i,j,k,s)
 
     !> @brief Upper level wrapper for sources
     !> @details Upper level wrapper for sources
     !! @n Main driver, this is called from the upwind stepping
+    !> @param integer [in] bID     : current block ID
     !> @param integer [in] locIndx : local index of current block
     !> @param integer [in] lev     : level of refinement of currrent block
     !> @param integer [in] i       : cell index in the X direction
@@ -113,7 +114,7 @@ contains
     use userconds, only : get_user_source_terms
     use globals,   only : PRIM
     implicit none
-    integer, intent(in)  :: locIndx, lev, i, j, k
+    integer, intent(in)  :: bID, locIndx, lev, i, j, k
     real, intent(out)    :: s(neqtot)
     !real :: x, y, z, r
 
@@ -121,7 +122,7 @@ contains
     s(:) = 0.
 
     !  user source terms (such as gravity, tidal or inertial forces)
-    if (user_source_terms) call get_user_source_terms(PRIM(locIndx,:,i,j,k),s,i,j,k)
+    if (user_source_terms) call get_user_source_terms(bID,locIndx,i,j,k,s)
 
 #ifdef BFIELD
     !  divergence correction Powell et al. 1999
