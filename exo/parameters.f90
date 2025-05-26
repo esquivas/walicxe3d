@@ -48,16 +48,16 @@ module parameters
   ! Execution parameters
   ! ============================================
 
-  real, parameter :: tfin =  1.0 * DAY     !< Final integration time (s)
+  real, parameter :: tfin =  0.2 * DAY     !< Final integration time (s)
   real, parameter :: dtout = 0.1 * DAY     !< Time between data dumps (s)
 
   !> Perform warm start?
-  logical, parameter :: dowarm = .false.
+  logical, parameter :: dowarm = .true.
   !> State file to use for warm start
-  character(*), parameter :: warm_file = "" !"./output/State.0002.dat"
+  character(*), parameter :: warm_file = "./M1/output/State.0001.dat"
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs =  32
+  integer, parameter :: nProcs = 64
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
@@ -94,9 +94,9 @@ module parameters
   ! Specify the maximum number of cells desired at the highest refinement
   ! level
   ! > MUST BE POWERS OF TWO! <
-  integer, parameter :: p_maxcells_x = 1032
-  integer, parameter :: p_maxcells_y = 258
-  integer, parameter :: p_maxcells_z = 1032
+  integer, parameter :: p_maxcells_x = 1024
+  integer, parameter :: p_maxcells_y = 256
+  integer, parameter :: p_maxcells_z = 1024
 
   ! -- OR --
 
@@ -151,7 +151,7 @@ module parameters
   ! (e.g. Gravity, tidal or inertial forces)
   ! They should be included in userconds module in the
   ! 'get_user_source_terms' subroutine
-  logical, parameter :: user_source_terms = .false.
+  logical, parameter :: user_source_terms = .true.
 
   ! ============================================
   ! Data output and logging
@@ -159,7 +159,7 @@ module parameters
 
   ! Data output formats
   !> Output in native Walicxe3D binary format (required for warm starts)?
-  logical, parameter :: output_bin = .false.
+  logical, parameter :: output_bin = .true.
   !> Output in VisIt-compatible VTK format?
   logical, parameter :: output_vtk = .true.
 
@@ -181,7 +181,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./output/"
+  character(*), parameter :: datadir = "./M1/output"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -192,7 +192,7 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir = "./logs/"!datadir
+  character(*), parameter :: logdir = "./M1/logs"!datadir
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -245,10 +245,10 @@ module parameters
   integer, parameter :: npassive = 1
 
   !> Courant-Friedrichs-Lewis parameter (0 < CFL < 1.0)
-  real, parameter :: CFL = 0.4
+  real, parameter :: CFL = 0.5
 
   !> Artificial viscosity
-  real, parameter :: visc_eta = 5.0E-3
+  real, parameter :: visc_eta = 1.0E-4
 
   ! ============================================
   ! Equation of state
@@ -258,10 +258,11 @@ module parameters
   ! Currently recognized options:
   ! EOS_ADIABATIC     : Does not modify P, and T=(P/rho)
   ! EOS_SINGLE_SPECIE : Uses P=nKT (e.g. to use with tabulated cooling curves)
-  ! EOS_TWOTEMP       : Uses the approximation of two mu's (above/below 'ion_thresh')
+  ! EOS_TWOTEMP       : Uses the approximation of two mu's (above/below
+  !                     'ion_thresh')
   ! EOS_H_RATE        : Using n_HI and n_HII
-  ! EOS_CHEM          : Enables a full chemical network
-  integer, parameter :: eos_type = EOS_H_RATE
+  ! EOS_CHEM          : Allows a full chemical network
+  integer, parameter :: eos_type = EOS_SINGLE_SPECIE
 
   ! ============================================
   ! Radiative Cooling
@@ -274,7 +275,7 @@ module parameters
   !  COOL_TABLE_METAL: tabulated cooling function (temperature and metallicity)
   !  COOL_H: Biro et al. prescription (temperature and ionization fraction)
   !  COOL_SCHURE: tabulated cooling function from Schure+2...
-  integer, parameter :: cooling_type = COOL_H
+  integer, parameter :: cooling_type = COOL_NONE
 
   !> Filename with table of cooling coefficients
   ! Some cooling tables are provided in the cooling/ subdirectory.
@@ -307,6 +308,11 @@ module parameters
   !! The following parameters are limited to a particular EOS_TWOTEMP
   !> Mean atomic mass of *ionized* gas (in AMUs)
   real, parameter :: mui = 0.61
+
+  !!  This is to use in cases that we explicitly compute the pressure as
+  !!  P = n_tot kb T
+  !! real, parameter :: mu = 1.0  REMOVED FIR CONFLICT WITH WINDS ROUTUNE
+
   !> Gas is considered ionized above this temp (in K)
   real, parameter :: ion_thres = 1.0e4
 
@@ -316,13 +322,13 @@ module parameters
 
   ! Unit scaling factors for length, density and velocity.
   ! These are conversion factors between physical (CGS) and code units,
-  ! which state the physical unit equivalent of 1 code unit, so that:
+  ! which state the physical uni  t equivalent of 1 code unit, so that:
   !   physical units = code_units * scaling_factor
   ! All other unit conversions are derived from these three
-  real, parameter :: l_sc = 1.0*RJUP        !< length scale (cm)
-  real, parameter :: d_sc = 1.0*mu0*AMU     !< density scale (g cm^-3)
-  real, parameter :: v_sc = 1.0e5           !< velocity scale (cm s^-1)
-  real, parameter :: pas_sc = d_sc          !< passive scalars scale
+  real, parameter :: l_sc = 1.98*RJUP      !< length scale (cm)
+  real, parameter :: d_sc = 1.0*AMU        !< density scale (g cm^-3)
+  real, parameter :: v_sc = 1.0e5          !< velocity scale (cm s^-1)
+  real, parameter :: pas_sc = d_sc         !< passive scalars scale
 
   ! ============================================
   ! Additional USER Parameters
