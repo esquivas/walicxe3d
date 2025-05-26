@@ -71,8 +71,10 @@ subroutine calcPrimsAll (uvars, pvars, cells)
   use globals, only : logu, localBlocks
   implicit none
 
-  real, intent(in)  :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
-  real, intent(out) :: pvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+  real, intent(in)  ::                                                         &
+                  uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax,nzmin:nzmax)
+  real, intent(out) ::                                                         &
+                  pvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax,nzmin:nzmax)
   integer, intent(in) :: cells
 
   integer :: nb, bID, badcells
@@ -84,7 +86,7 @@ subroutine calcPrimsAll (uvars, pvars, cells)
       badcells = 0
       call calcPrimsBlock (uvars, pvars, nb, cells, badcells)
 
-      if ((verbosity > 1).and.(badcells.ne.0)) then
+      if ((verbosity >= 1).and.(badcells.ne.0)) then
         write(logu,'(1x,a,i0,a,i0)') "Warning: ", badcells, &
         " pressure corrections in block ", bID
       end if
