@@ -89,7 +89,8 @@ subroutine Godunov (order)
   if (order.eq.1) then
       if (verbosity > 1) write(logu,'(1x,a)') "> Integrating blocks ..."
   else if (order.eq.2) then
-      if (verbosity > 1) write(logu,'(1x,a)') "> Integrating blocks (1st order half step) ..."
+      if (verbosity > 1) write(logu,'(1x,a)')                                  &
+                         "> Integrating blocks (1st order half step) ..."
   end if
 
   do bIndx=1,nbMaxProc
@@ -124,7 +125,8 @@ subroutine Godunov (order)
     end if
   end do
 
-    if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", nicetoc(mark)
+    if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount,      &
+                             " blocks in ", nicetoc(mark)
 
   ! -----------------------------------
   ! 2nd-order full timestep (skipped in 1st-order schemes)
@@ -182,7 +184,8 @@ subroutine Godunov (order)
       end if
     end do
 
-      if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount, " blocks in ", &
+      if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount,    &
+                               " blocks in ", &
     nicetoc(mark)
 
   end if
@@ -256,9 +259,9 @@ if (debug_mode) then
   end do
 end if
 
-        UP(locIndx,:,i,j,k) = U(locIndx,:,i,j,k)                              &
-                            + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))                &
-                            + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))                &
+        UP(locIndx,:,i,j,k) = U(locIndx,:,i,j,k)                               &
+                            + dtdx*(FC(:,i-1,j,k)-FC(:,i,j,k))                 &
+                            + dtdy*(GC(:,i,j-1,k)-GC(:,i,j,k))                 &
                             + dtdz*(HC(:,i,j,k-1)-HC(:,i,j,k))
 
         !! Include source terms S
