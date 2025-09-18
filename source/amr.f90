@@ -346,9 +346,9 @@ subroutine refineBlock (fatherID)
       write(logu,'(a)') "Child block couldn't be assigned to an empty slot!"
       write(logu,'(a)') "***ABORTING***"
       call clean_abort (ERROR_REGISTER_CHILD)
-!    else
-!      write(logu,'(a,i8,a,i5)') " Child block with bID ", childID, &
-!                                " assigned to local slot ", childIndex
+    !    else
+    !      write(logu,'(a,i8,a,i5)') " Child block with bID ", childID, &
+    !                                " assigned to local slot ", childIndex
     end if
 
     ! Determine child's sibling coordinates (xs, ys, zs)
@@ -374,13 +374,13 @@ subroutine refineBlock (fatherID)
   end do
 
   ! Free father's slot
-!  do nb=1,nbMaxProc
-!    if (localBlocks(nb).eq.fatherID) then
-!      localBlocks(nb) = -1
-!!      write(logu,'(a,i8)') " Freeing slot of father block, bID ", fatherID
-!      exit
-!    end if
-!  end do
+  !  do nb=1,nbMaxProc
+  !    if (localBlocks(nb).eq.fatherID) then
+  !      localBlocks(nb) = -1
+  !!      write(logu,'(a,i8)') " Freeing slot of father block, bID ", fatherID
+  !      exit
+  !    end if
+  !  end do
   call pop (fatherID, localBlocks, nbMaxProc, nb)
 
   ! Update local block count
@@ -432,7 +432,6 @@ subroutine syncBlockLists()
   call mpi_barrier (mpi_comm_world, ierr)
 
 #endif
-
 end subroutine syncBlockLists
 
 !===============================================================================
@@ -702,14 +701,14 @@ subroutine firstborn(bID, firstbornID)
 
   call bcoords(bID, x, y, z)
   call meshlevel(bID, ilev)
-! DEBUG
-!write(logu,*) "Calling firstborn..."
-!write(logu,*) ilev
-!if (ilev.gt.maxlev) then
-!  write(logu,*) "Block", bID, "has firstborn beyond the max mesh level!!!"
-!  write(logu,*) "Y U ASKING FOR IT?!"
-!end if
-! DEBUG
+  ! DEBUG
+  !write(logu,*) "Calling firstborn..."
+  !write(logu,*) ilev
+  !if (ilev.gt.maxlev) then
+  !  write(logu,*) "Block", bID, "has firstborn beyond the max mesh level!!!"
+  !  write(logu,*) "Y U ASKING FOR IT?!"
+  !end if
+  ! DEBUG
   nx = nbx(ilev+1)
   ny = nby(ilev+1)
   nz = nbz(ilev+1)
@@ -809,7 +808,7 @@ subroutine siblingID(bID, sID)
   integer :: sibling_list(8), i, fatherID
 
   call father(bID, fatherID)
-!  print*, "Father of", bID, "is", fatherID  ! DEBUG
+  !  print*, "Father of", bID, "is", fatherID  ! DEBUG
   if (fatherID.eq.-1) then
     ! return -1 if block is root block (no father or siblings)
     sID = -1
@@ -958,9 +957,9 @@ subroutine father(bID, fatherID)
 
     fatherID = 1 + (xp-1) + (yp-1)*nx + (zp-1)*nx*ny + offsets(ilev-1)
 
-!    print*, "Block", bID, ", x=", x, ", y=", y, ", z=", z  ! DEBUG
-!    print*, bID, "'s father coords:", xp, yp, zp  ! DEBUG
-!    print*, ''  ! DEBUG
+  !print*, "Block", bID, ", x=", x, ", y=", y, ", z=", z  ! DEBUG
+  !print*, bID, "'s father coords:", xp, yp, zp  ! DEBUG
+  !print*, ''  ! DEBUG
 
   end if
 
@@ -1136,21 +1135,21 @@ subroutine checkProximity (finestLev)
   logical :: inhibited
 
   ! DEBUG
-!  write(logu,*) ""
-!  write(logu,*) "Starting Proximity checks ..."
+  !  write(logu,*) ""
+  !  write(logu,*) "Starting Proximity checks ..."
   ! DEBUG
 
   do level=finestLev,1,-1
     ! For every level from startLev up to root ...
 
     ! DEBUG
-!    write(logu,*) "Checking blocks in level", level
-!    write(logu,*) "GLOBAL refinement list:"
-!    do nb=1,nbMaxProc
-!      if (gToRefine(nb).ne.-1) then
-!        write(logu,*) gToRefine(nb)
-!      end if
-!    end do
+    !    write(logu,*) "Checking blocks in level", level
+    !    write(logu,*) "GLOBAL refinement list:"
+    !    do nb=1,nbMaxProc
+    !      if (gToRefine(nb).ne.-1) then
+    !        write(logu,*) gToRefine(nb)
+    !      end if
+    !    end do
     ! DEBUG
 
     do nb=1,nbMaxGlobal
@@ -1213,24 +1212,21 @@ subroutine checkProximity (finestLev)
           ! Check all neighbors
           do dir=1,6
 
-!            call neighbors(bID, dir, neighType, neighList)
-!            if (neighType.eq.NEIGH_FINER) then
-!              do i=1,4
+            !            call neighbors(bID, dir, neighType, neighList)
+            !            if (neighType.eq.NEIGH_FINER) then
+            !              do i=1,4
+            !                nID = neighList(i)
+            !                call find (nID, globalBlocks, nbMaxGlobal, nb1)
+            !                if (nb1.eq.-1) then
+            !                  refineFlags(nb) = FLAG_NONE
+            !                  inhibited = .true.
+            !                  exit
+            !                end if
+            !              end do
+            !            end if
 
-!                nID = neighList(i)
-!                call find (nID, globalBlocks, nbMaxGlobal, nb1)
-
-!                if (nb1.eq.-1) then
-!                  refineFlags(nb) = FLAG_NONE
-!                  inhibited = .true.
-!                  exit
-!                end if
-
-!              end do
-!            end if
-
-!            ! Skip remaining checks if already inhibited
-!            if (inhibited) exit
+            ! Skip remaining checks if already inhibited
+            !if (inhibited) exit
 
             call neighbors(bID, dir, neighType, neighList)
             if (neighType.eq.NEIGH_FINER) then
