@@ -251,7 +251,7 @@ contains
 
     integer, parameter  :: nb=3
     real    :: x(nb),y(nb),z(nb), GM(nb), rad2(nb), pp(neqtot)
-    integer :: index
+    !integer :: index
     real    :: xc ,yc, zc
     real    :: GradPhi(nb), OmegaSq
     real    :: rsoft
