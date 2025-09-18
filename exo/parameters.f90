@@ -28,7 +28,7 @@
 ! "simple" snr model and a Type Ia ejecta model are shown.
 ! See the accompanying user.f90 file for more details of this example.
 
-! You must fill in the following parameters before compilation:
+!  You must fill in the following parameters before compilation:
 !  nProcs: the number of processes to use
 !  RAM_per_proc: the amount of RAM available, per process
 
@@ -48,16 +48,16 @@ module parameters
   ! Execution parameters
   ! ============================================
 
-  real, parameter :: tfin =  0.2 * DAY     !< Final integration time (s)
+  real, parameter :: tfin =  0.5 * DAY     !< Final integration time (s)
   real, parameter :: dtout = 0.1 * DAY     !< Time between data dumps (s)
 
   !> Perform warm start?
-  logical, parameter :: dowarm = .true.
+  logical, parameter :: dowarm = .false.
   !> State file to use for warm start
-  character(*), parameter :: warm_file = "./M1/output/State.0001.dat"
+  character(*), parameter :: warm_file = "./M4/output/State.0002.dat"
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs = 64
+  integer, parameter :: nProcs = 32
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
@@ -161,7 +161,7 @@ module parameters
   !> Output in native Walicxe3D binary format (required for warm starts)?
   logical, parameter :: output_bin = .true.
   !> Output in VisIt-compatible VTK format?
-  logical, parameter :: output_vtk = .true.
+  logical, parameter :: output_vtk = .false.
 
   !> Output mode: simultaneous or turn-based output?
   !! Currently recognized options:
@@ -181,7 +181,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./M1/output"
+  character(*), parameter :: datadir = "./M4/output"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -192,7 +192,7 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir = "./M1/logs"!datadir
+  character(*), parameter :: logdir = "./M4/logs"!datadir
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -242,7 +242,8 @@ module parameters
 
   !> Number of extra passive scalars
   ! At least one is needed if metallicity-dependent cooling is to be used
-  integer, parameter :: npassive = 1
+  ! Also, at least one is needed if Radiation Transfer is enabled.
+  integer, parameter :: npassive = 2
 
   !> Courant-Friedrichs-Lewis parameter (0 < CFL < 1.0)
   real, parameter :: CFL = 0.5
@@ -262,7 +263,7 @@ module parameters
   !                     'ion_thresh')
   ! EOS_H_RATE        : Using n_HI and n_HII
   ! EOS_CHEM          : Allows a full chemical network
-  integer, parameter :: eos_type = EOS_SINGLE_SPECIE
+  integer, parameter :: eos_type = EOS_H_RATE
 
   ! ============================================
   ! Radiative Cooling
@@ -289,10 +290,18 @@ module parameters
   !> The following selects the column of the ionization fraction used for low T
   !! in the Schure et al. cooling curves
   !> dmc_f = 1 : f_i = 1e-4
+
   !>         2 : f_i = 1e-3
   !>         3 : f_i = 1e-2
   !>         4 : f_i = 1e-1
   real, parameter :: dmc_f = 1
+
+  !============================================
+  ! Ionizing Radiation transfer
+  !============================================
+
+  !>  Enable radiation transfer module
+  logical, parameter :: rad_transfer = .true.
 
   ! ============================================
   ! General gas parameters
@@ -352,9 +361,11 @@ module parameters
   integer, parameter :: neqmhd = 0
 #endif
 
-  !> Passive scalar index used for metallicity
-  ! Only applicable for COOL_TABLE_METAL cooling
-  integer, parameter :: metalpas = neqhydro + neqmhd + min(npassive,1)
+  !> Named passive scalars
+  ! metalpas: applicable for COOL_TABLE_METAL cooling
+  ! nH0     : applicable for EOS_H_RATE
+  ! TauRT   : applicable for rad_transfer
+  integer   :: metalpas, TauRT, inH0
 
   !> Total number of equations to integrate
   !! (hydro variables + mhd variables + passive scalars)
