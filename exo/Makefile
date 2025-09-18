@@ -65,6 +65,7 @@ snr.o \
 winds.o \
 orbits.o \
 user.o \
+rad-transfer.o \
 hrate.o \
 cooling_h.o \
 cooling_schure.o \
