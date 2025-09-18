@@ -44,6 +44,7 @@ program Walicxe3D
   use coolingModule, only : cooling
   use report,        only : main_report
   use hrate,         only : updateNeutralFraction
+  use radTransfer,   only : DoRadTransfer
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
@@ -68,6 +69,9 @@ program Walicxe3D
   ! Update primitives (with Us array in all cells)
   call updatePrims ()
 
+  ! Do radiation transfer
+  if (rad_transfer) call DoRadTransfer ()
+
   ! Write initial condition to disk
   if (nextout.eq.0) then
     call writeOutput (0)
@@ -81,10 +85,12 @@ program Walicxe3D
     it = it + 1
 
     if (verbosity > 2) then
-      write(logu,'(a)') "================================================================================"
+      write(logu,'(a)') &
+"=============================================================================="
       write(logu,'(1x,a,i0)') "Starting Iteration " , it
       if (verbosity > 3) write(logu,'(1x,a)') stamp()
-      write(logu,'(a)') "================================================================================"
+      write(logu,'(a)') &
+"=============================================================================="
     end if
 
     ! Hydro Solver
@@ -92,6 +98,9 @@ program Walicxe3D
 
     ! Update primitives in all blocks
     call updatePrims ()
+
+    ! Do radiation transfer
+    if (rad_transfer) call DoRadTransfer ()
 
     ! Update ionization fraction / chemistry
     if (eos_type == EOS_H_RATE) call updateNeutralFraction ()
@@ -110,7 +119,6 @@ program Walicxe3D
       call writeOutput(nextout)
       nextout = nextout + 1
       dumpout = .false. ! until next time
-
     end if
 
     ! Report progress
@@ -124,7 +132,8 @@ program Walicxe3D
   ! Deallocate globals and terminate execution
   if (verbosity > 0) then
     write(logu,*) ""
-    write(logu,'(a)') "================================================================================"
+    write(logu,'(a)') &
+"=============================================================================="
     write(logu,'(a)') STAMP()
     write(logu,'(a)') 'Execution complete!'
     write(logu,'(a,a)') 'Total elapsed time: ', nicetoc(start_mark)
