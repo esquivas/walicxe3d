@@ -46,7 +46,7 @@ program extract
 
   ! Output range to process
   integer, parameter :: noutmin = 0
-  integer, parameter :: noutmax = 1
+  integer, parameter :: noutmax = 5
 
   ! Axis and location of cut
   ! cut_axis must be one of AXIS_X, AXIS_Y, AXIS_Z.
@@ -55,7 +55,7 @@ program extract
   real, parameter :: cut_location = 6.25*1.98*RJUP
 
   ! Filenames
-  character(*), parameter :: datadir = "./M2/output"      ! Path to data dir
+  character(*), parameter :: datadir = "./M4/output"      ! Path to data dir
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY" ! Data files template
   character(*), parameter :: outmaptpl = "CutD.YYYY"      ! Output file template
 
@@ -78,8 +78,8 @@ program extract
   integer, parameter :: ncells_z = 16
 
   ! Simulation parameters
-  integer, parameter :: nprocs = 64
-  integer, parameter :: neqtot = 6
+  integer, parameter :: nprocs = 32
+  integer, parameter :: neqtot = 7
 
   ! Gas parameters
   real, parameter :: gamma = 5.0/3.0
@@ -110,16 +110,15 @@ program extract
 
   integer :: ilev, bID, blocksused, istat, nb, p
   integer :: i, j, k, i1, j1, k1, ip, jp, i_off, j_off, i2, j2
-  integer :: mesh(7), unitin, nblocks, plane, nout
+  integer :: mesh(7), unitin, nblocks, plane, nout, unitmesh
   integer :: nxmap, nymap, nx, ny, cell_count
   real :: dx(maxlev), pvars(neqtot), uvars(neqtot)
-  character(256) :: filename
+  character(256) :: filename, filemesh
 
   real, allocatable :: block(:,:,:,:)
   real, allocatable :: outmap(:,:,:)
 
   ! ====================================================
-
   ! Allocate output map
   if (cut_axis.eq.AXIS_X) then
     nxmap = nbrooty*2**(maxlev-1)*ncells_y
@@ -154,11 +153,27 @@ program extract
 
   do nout=noutmin,noutmax
 
+  !=============================================================================
+  !  This is to output the mesh
+  call genfname(0, nout, datadir, "MeshCutD.YYYY", ".bin", filemesh)
+  unitmesh = 10 + nprocs
+  open (unit=unitmesh, file=filemesh, status='unknown', access='stream',      &
+        iostat=istat)
+  if (istat.ne.0) then
+    write(*,'(a,a,a)') "Could not open the file '", trim(filemesh), "' !"
+    write(*,'(a,a,a)') "Does the datadir '", trim(datadir), "' exist?"
+    close(unitmesh)
+    stop
+  end if
+  !=============================================================================
+
+
   ! Reset arrays
   block(:,:,:,:) = 0.0
   outmap(:,:,:) = 0.0
 
   cell_count = 0
+  blocksused = 0
 
   ! Process blocks data files from all processes
   do p=0,nprocs-1
@@ -177,8 +192,6 @@ program extract
       stop
     end if
 
-    ! Read file header
-    blocksused = 0
     read(unitin) nblocks
     write(*,'(1x,a,i0,a)') "Processing ", nblocks, " blocks ..."
 
@@ -195,7 +208,7 @@ program extract
       if (plane.ne.-1) then
 
         blocksused = blocksused + 1
-!        write(*,*) "Cutplane=", plane
+        !write(*,*) "Cutplane=", plane
         if (cut_axis.eq.AXIS_X) then
           nx = ncells_y
           ny = ncells_z
@@ -206,6 +219,7 @@ program extract
           nx = ncells_x
           ny = ncells_y
         end if
+
 
         ! Go over cells that intersect cut plane
         do ip=1,nx
@@ -229,9 +243,9 @@ program extract
             ! Calculate finest-mesh absolute coords
             call absCoords (bID,i,j,k,mesh,i1,j1,k1)
 
-!            write(*,'(a,1x,i0,1x,i0,1x,i0,1x,a)') &
-!              "Cell", i, j, k, "absolute coords:"
-!            write(*,'(i0,1x,i0,1x,i0)') i1,j1,k1
+            !write(*,'(a,1x,i0,1x,i0,1x,i0,1x,a)') &
+            !  "Cell", i, j, k, "absolute coords:"
+            !write(*,'(i0,1x,i0,1x,i0)') i1,j1,k1
 
             ! Reduce absolute coords to 2D
             if (cut_axis.eq.AXIS_X) then
@@ -245,11 +259,20 @@ program extract
               j1 = j1
             end if
 
-            j = min(ncells_y, j)
+            !-------------------------------------------------------------------
+            !  Write mesh info
+            if (ip == 1 .and. jp==1) then
+              write(unitmesh) i1, j1, int( nx * 2**(maxlev-ilev) ) , &
+                                      int( ny * 2**(maxlev-ilev) )
+              print*, i1, j1, int( nx*2**(maxlev-ilev)) , ilev, blocksused
+            end if
+            !-------------------------------------------------------------------
+
+            j = min(ncells_y, j)  !????
 
             ! Copy data value into output map. Duplicate value
             ! into multiple cells if block not at highest resolution
-!            write(*,'(a)') "Output map cells:"
+            ! write(*,'(a)') "Output map cells:"
             do i_off=0,2**(maxlev-ilev)-1
               do j_off=0,2**(maxlev-ilev)-1
 
@@ -257,7 +280,7 @@ program extract
                 i2 = i1 + i_off
                 j2 = j1 + j_off
 
-!                write(*,'(i0,1x,i0)') i2, j2
+                ! write(*,'(i0,1x,i0)') i2, j2
                 ! Calculate and de-scale primitives
                 uvars(:) = block(:,i,j,k)
                 call flow2prim (uvars, pvars)
@@ -278,10 +301,14 @@ program extract
       end if
     end do
 
-    write(*,'(1x,a,i0,a)') "Extracted data from ", blocksused, " blocks."
-
   end do
 
+  !-----------------------------------------------------------------------------
+  close(unitmesh)
+  !-----------------------------------------------------------------------------
+
+  write(*,*) ""
+  write(*,'(1x,a,i0,a)') "Extracted data from ", blocksused, " blocks."
   write(*,*) ""
   write(*,*) "Done extracting 2D cut."
   write(*,*) "Total cells copied:", cell_count
@@ -351,7 +378,7 @@ subroutine getCellPlane (bID, mesh, plane)
   else
     write(*,'(1x,a)') "Invalid cut axis!!"
   end if
- 
+
   ! If block intersects cut plane, determine intersection cell plane.
   ! Otherwise, return -1.
   if ((cut_location.ge.bl).and.(cut_location.lt.bh)) then
