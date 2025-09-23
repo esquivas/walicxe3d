@@ -181,7 +181,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./M4/output"
+  character(*), parameter :: datadir = "./M3/output"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -192,7 +192,7 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir = "./M4/logs"!datadir
+  character(*), parameter :: logdir = "./M3/logs"!datadir
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
