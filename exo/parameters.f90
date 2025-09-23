@@ -48,16 +48,16 @@ module parameters
   ! Execution parameters
   ! ============================================
 
-  real, parameter :: tfin =  0.5 * DAY     !< Final integration time (s)
+  real, parameter :: tfin =  1.0 * DAY     !< Final integration time (s)
   real, parameter :: dtout = 0.1 * DAY     !< Time between data dumps (s)
 
   !> Perform warm start?
   logical, parameter :: dowarm = .false.
   !> State file to use for warm start
-  character(*), parameter :: warm_file = "./M4/output/State.0002.dat"
+  character(*), parameter :: warm_file = "./M3/output/State.0002.dat"
 
   !> Number of MPI processes to launch
-  integer, parameter :: nProcs = 32
+  integer, parameter :: nProcs = 40
 
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
@@ -276,7 +276,7 @@ module parameters
   !  COOL_TABLE_METAL: tabulated cooling function (temperature and metallicity)
   !  COOL_H: Biro et al. prescription (temperature and ionization fraction)
   !  COOL_SCHURE: tabulated cooling function from Schure+2...
-  integer, parameter :: cooling_type = COOL_NONE
+  integer, parameter :: cooling_type = COOL_H
 
   !> Filename with table of cooling coefficients
   ! Some cooling tables are provided in the cooling/ subdirectory.
