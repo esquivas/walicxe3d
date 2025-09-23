@@ -140,7 +140,7 @@ contains
     end if
 
     aloss = ecoll + eion + (erec + 7.033*(eOI + eOII))*(1.-fr) + equil*fr
-    !  aloss in cgs (cm^-3 s^-1)
+    !  aloss in cgs (erg cm^-3 s^-1)
 
   end function aloss
 
@@ -154,8 +154,10 @@ contains
   subroutine  apply_cooling_h_neq(bIndx, maxloss)
 
     use parameters   !#add energy per ionzation as a parameter?
-    use globals,    only : U, PRIM, dt
-    use hydro_core, only : calcTemp
+    use globals,     only : U, PRIM, dt, dz
+    use hydro_core,  only : calcTemp
+    use radTransfer, only : F0, a0
+    use amr,         only : meshlevel
     use constants
     implicit none
 
@@ -165,12 +167,16 @@ contains
 
     real(kind = 8)     :: y0, y1, dh, dh0, gain, tprime, L0, ce, Temp, T1
     real               :: vel2, ETH, EK, cool_factor, dt_seconds
-    real               :: frac_loss!, metal
-    integer            :: i, j, k
+    real               :: frac_loss, flux, dtau, dl !, dV
+    integer            :: i, j, k, ilev
 
     maxloss = 0.0
 
     dt_seconds = dt*t_sc
+
+    call meshlevel(bIndx, ilev )
+    dl   = dz(ilev)*l_sc        !  [ cm ]
+    !dV   = (dz(ilev)*l_sc)**3  !   [ cm^{-3} ]
 
     !  Apply cooling to 1st ghost cell to avoid boundarty artifacts
     !  when marking for refinement
@@ -182,41 +188,53 @@ contains
           dh  = real( PRIM(bIndx,1,i,j,k) / mu0 ,  8)
 
           !# neutrals density
-          dh0 = real( PRIM(bIndx,firstpas,i,j,k) , 8)
+          dh0 = real( PRIM(bIndx,inH0,i,j,k) , 8)
 
           !# neutral H fraction (t0)
-          y0 =  real( mu0 *  U(bIndx,firstpas,i,j,k) /    U(bIndx,1,i,j,k), 8)
+          y0 =  real( mu0 *  U(bIndx,inH0,i,j,k) /    U(bIndx,1,i,j,k), 8)
 
           !# neutral H fraction (t0+dt) fraccion actualizada
-          y1  = real( mu0*PRIM(bIndx,firstpas,i,j,k) / PRIM(bIndx,1,i,j,k) , 8)
+          y1  = real( mu0*PRIM(bIndx,inH0,i,j,k) / PRIM(bIndx,1,i,j,k) , 8)
 
           !# update the neutral fraction for the conserved arrays Us
-          U (bIndx,firstpas,i,j,k) = PRIM(bIndx,firstpas,i,j,k)
+          U (bIndx,inH0,i,j,k) = PRIM(bIndx,inH0,i,j,k)
 
           ! Calculate temperature of this cell
           call calcTemp (PRIM(bIndx,:,i,j,k), Temp)
 
           ! Cooling not applied below cool_Tmin
-          if (Temp > Tmin_cool) then
+          !if (Temp > Tmin_cool) then
+          !  Lower Temperature coverage to allow photo-heating @ low T
+          if (Temp > T_floor) then
 
-            !  get the energy losses L_0 ([cm^-3 s^-1])
-            L0 = aloss(y0,y1,dh,dh0,real(Temp,8))    !/dh**2
+            if (Temp > Tmin_cool) then
+              !  get the energy losses L_0 ([erg cm^-3 s^-1])
+              L0 = aloss(y0,y1,dh,dh0,real(Temp,8))    !/dh**2
+            else
+              L0 = 1e-30 !  Check a proper value for this
+            end if
 
-            !if (dif_rad) then
-            !gain   = real(radphi(bIndx,i,j,k),8)*dh0*Kb*energy_per_ionization
-            !tprime = max( gain*real(Temp,8)/L0, 7000.)
-            !else
-            !tprime=10.
-            !end if
-            gain = 0.0   !# add later
-            Tprime = T_floor
+            if (rad_transfer) then
+              dtau = a0 * dz(ilev) * l_sc * dh * y0
+              if (k==0) then
+                flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k))
+              else
+                flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k-1))
+              endif
+                gain = 3.8e-12* flux * (1.0-exp(-dtau)) / dh0 / dl
+                tprime = max( gain*real(Temp,8)/L0, 7000.)
+            else
+              tprime=10.
+            end if
+
+            !gain = 0.0   !# add later
+            !Tprime = 10. ! T_floor
 
             ce = (2.0*L0)/(3.0*Kb*dH*real(Temp,8))
-
             T1=Tprime+(Temp-Tprime)*exp(-ce*dt_seconds) !# new temperature
-            cool_factor = T1/Temp
 
-            frac_loss = 1.0-cool_factor
+            cool_factor = T1 / Temp
+            frac_loss   = 1.0 - cool_factor
 
             ! Record maximum cooling for this block before limiting
             maxloss = max(maxloss, frac_loss)
