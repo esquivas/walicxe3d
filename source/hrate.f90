@@ -39,7 +39,8 @@ contains
     end do
 
     if (verbosity > 3) write(logu,*) ""
-    if (verbosity > 3) write(logu,'(1x,a,a)') "> Update completed in ", nicetoc(mark)
+    if (verbosity > 3) write(logu,'(1x,a,a)') "> Update completed in ",        &
+                                               nicetoc(mark)
 
 
   end subroutine updateNeutralFraction
@@ -81,22 +82,29 @@ contains
   !> @param real [in] prim(neq) : primitive variables in one cell
   subroutine solve_h_rate(bIndx,dt)
 
-    use parameters, only : ncells_x, ncells_y, ncells_z, firstpas, mu0,       &
-                           cooling_type
-    use globals,    only : U, PRIM
+    use parameters,  only : ncells_x, ncells_y, ncells_z, inH0, mu0,       &
+                           cooling_type, TauRT, l_sc, rad_transfer
+    use globals,     only : U, PRIM, dz
     use constants
     use hydro_core
+    use amr,         only : meshlevel
+    use radTransfer, only : F0, a0
     implicit none
 
-    integer, intent(in)   :: bIndx
-    real, intent(in)      :: dt
-    integer               :: i, j, k
-    real                  :: T
-    real (kind=8)        :: dh, y0, g0, e, y1
-    real (kind=8)        :: fpn
-    real (kind=8)        :: col,rec,a,b,c,d
+    integer, intent(in) :: bIndx
+    real, intent(in)    :: dt
+    integer             :: i, j, k, ilev
+    real                :: T
+    real                :: dtau , dl, flux !, dV
+    real (kind=8)       :: dh, y0, g0, e, y1
+    real (kind=8)       :: fpn
+    real (kind=8)       :: col,rec,a,b,c,d
     !      xi - neutral carbon abundance (for non-zero electron density)
     real (kind=8), parameter ::  xi=1.e-4
+
+    call meshlevel(bIndx, ilev )
+    dl   = dz(ilev)*l_sc       !  [ cm ]
+    !dV   = (dz(ilev)*l_sc)**3  !  [ cm^{-3} ]
 
     do k=1,ncells_z
       do j=1,ncells_y
@@ -108,16 +116,25 @@ contains
           col = colf ( real(T,8) )       !# collisional ionization rate
           rec = alpha( real(T,8) )       !# rad. recombination rate
 
-          dh  = real( PRIM(bIndx,  1     ,i,j,k)/ mu0, 8 ) !# H density
-          y0  = real( PRIM(bIndx,firstpas,i,j,k)/ dh , 8 ) !# neutral H fraction
-          fpn = 0.0                                 !# ionizing flux per nucleus
+          dh  = real( PRIM(bIndx,  1  ,i,j,k)/ mu0, 8 ) !# H density
+          y0  = real( PRIM(bIndx,inH0, i,j,k)/ dh , 8 ) !# neutral H fraction
+
+           !# ionizing flux per nucleus
+          if (rad_transfer) then
+            dtau = a0 * dz(ilev) * l_sc * dh * y0
+            flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k-1)) ! x dA is cancelled below
+            !fpn = phi / dh
+            !fpn  = flux * (1.0 - exp(-dtau) ) / dV / dh**2 /y0
+            fpn = flux * (1.0 - exp(-dtau) ) / dl / dh**2 /y0    !  dA/dV = 1/dl
+          else
+            fpn = 0.
+          end if
+          !fpn = 0.
 
           ! solve for the new neutral fraction using the analytical
           ! solution (see notes)
           a=rec+col
-
           b=-((2.0+xi)*rec+(1.0+xi)*col+fpn)
-
           c=(1.0+xi)*rec
           d=sqrt(b**2 - 4.0*a*c)
           g0=(2.0*a*y0+b+d)/(2.0*a*y0+b-d)
@@ -128,11 +145,11 @@ contains
           y1=max(y1,0.0)
 
           !  update the density of neutrals
-          PRIM(bIndx,firstpas,i,j,k) = PRIM(bIndx,1,i,j,k)*real(y1)/mu0
+          PRIM(bIndx,inH0,i,j,k) = PRIM(bIndx,1,i,j,k)*real(y1)/mu0
 
           !  if Cool_H is enabled, U(y_H) is updated after cooling)
           if (cooling_type /= COOL_H) then
-            U (bIndx,firstpas,i,j,k) = PRIM(bIndx,firstpas,i,j,k)
+            U (bIndx,inH0,i,j,k) = PRIM(bIndx,inH0,i,j,k)
           end if
 
         end do
