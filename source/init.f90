@@ -42,7 +42,8 @@ subroutine initmain ()
 
   use parameters
   use globals
-  use userconds, only : initializeUserModule
+  use radTransfer, only : initRadTransfer
+  use userconds,   only : initializeUserModule
   use tictoc
   use clean_quit, only : clean_abort
   use cooling_schure, only : loadcooldata_schure
@@ -99,7 +100,7 @@ subroutine initmain ()
 #ifdef ifort
     inquire(directory=trim(logdir),exist=existing)
 #endif
-    if (.not.existing .and. rank ==master ) then
+    if (.not.existing .and. rank == master ) then
       write(*,'(a)') "Could not find logdir, creating it anew"
       call system('mkdir -p ' // trim(logdir) )
     end if
@@ -311,6 +312,22 @@ subroutine initmain ()
     write(logu,'(1x,a,es12.5,a)') "Time:     ", t_sc, " s"
 
   end if
+
+  !  Report the Equation of State used
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    write(logu,'(1x,a,a)') ""
+    select case(eos_type)
+    case(EOS_ADIABATIC)
+      write(logu,'(1x,a)') "> Using an adiabatic eq. of state"
+    case(EOS_SINGLE_SPECIE)
+      write(logu,'(1x,a)') "> Using a single specie eq. of state"
+    case(EOS_TWOTEMP)
+      write(logu,'(1x,a)') "> Using a two temperature eq. of state"
+    case(EOS_H_RATE)
+      write(logu,'(1x,a)') "> Using the H rate eq. of state"
+    end select
+  end if
+
   ! Radiative cooling
   write(logu,*) ""
   if (cooling_type.eq.COOL_NONE) then
@@ -342,6 +359,28 @@ subroutine initmain ()
     else if (cooling_type.eq.COOL_H) then
       write(logu,'(1x,a)') "Cooling w/(Biro et al. 1995) prescription"
     end if
+  end if
+
+  ! Set named scalars
+  l = firstpas
+  if (eos_type == EOS_H_RATE) then
+    inH0 = l
+    l = l + 1
+  end if
+  if (cooling_type == COOL_TABLE_METAL) then
+    metalpas = l
+    l = l + 1
+  end if
+  if (rad_transfer) then
+    TauRT = l
+  end if
+
+  !  Radiation transfer
+  if (rad_transfer) then
+        write(logu,*) ""
+    write(logu,'(1x,a)') "> Radiation transfer enabled..."
+    write(logu,'(1x,a, i0)') "Tau stored in Equation : ", TauRT
+    write(logu,*) ""
   end if
 
   ! Allocate memory and initialize big data arrays
@@ -475,12 +514,19 @@ subroutine initmain ()
   it = 0
   nextout = 0
 
+  !  Initialize radiation transfer module
+  call initRadTransfer()
+
   ! initialize vaiables and modules defined by user
   call initializeUserModule()
-
+  if ( (verbosity > 0).and.(logged.or.(rank==master)) ) then
+    write(logu,'(1x,a,a)') ""
+    write(logu,'(1x,a)') "Successfully Initialized user module"
+    write(logu,'(1x,a,a)') ""
+  end if
   ! =================================
   if (verbosity > 3) then
-    write(logu,'(1x,a,a)') ""
+
     write(logu,'(1x,a,a)') "> Performed initializations and allocated big arrays in ", nicetoc(mark)
     write(logu,*) ""
   end if

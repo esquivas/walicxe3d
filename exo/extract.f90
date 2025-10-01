@@ -38,6 +38,7 @@ program extract
   real, parameter :: AMU = 1.660539E-24
   real, parameter :: KB  = 1.380658E-16
   real, parameter :: PI  = 3.141593
+  real, parameter :: RJUP = 7.1492E9
 
   ! ============================================================================
   ! PROGRAM CONFIGURATION
@@ -45,40 +46,40 @@ program extract
 
   ! Output range to process
   integer, parameter :: noutmin = 0
-  integer, parameter :: noutmax = 20
+  integer, parameter :: noutmax = 5
 
   ! Axis and location of cut
   ! cut_axis must be one of AXIS_X, AXIS_Y, AXIS_Z.
   ! cut_location must be given in physical units.
   integer, parameter :: cut_axis = AXIS_Y
-  real, parameter :: cut_location = 29.9*PC
+  real, parameter :: cut_location = 6.25*1.98*RJUP
 
   ! Filenames
-  character(*), parameter :: datadir = "./DATA/"     ! Path to data dir
-  character(*), parameter :: blockstpl = "BlocksXXX.YYYY"  ! Data files template
-  character(*), parameter :: outmaptpl = "CutD.YYYY"  ! Output file template
+  character(*), parameter :: datadir = "./M4/output"      ! Path to data dir
+  character(*), parameter :: blockstpl = "BlocksXXX.YYYY" ! Data files template
+  character(*), parameter :: outmaptpl = "CutD.YYYY"      ! Output file template
 
   ! Output format
-  logical, parameter :: output_vtk = .true.   ! VTK output
+  logical, parameter :: output_vtk = .false.   ! VTK output
   logical, parameter :: output_bin = .true.   ! Direct binary output
 
   ! Physical box sizes (cgs)
-  real, parameter :: xsize = 60*PC
-  real, parameter :: ysize = 60*PC
-  real, parameter :: zsize = 60*PC
+  real, parameter :: xsize = 50.0 * 1.98 * RJUP
+  real, parameter :: ysize = 12.5 * 1.98 * RJUP
+  real, parameter :: zsize = 50.0 * 1.98 * RJUP
 
   ! Mesh parameters
-  integer, parameter :: nbrootx = 1
+  integer, parameter :: nbrootx = 4
   integer, parameter :: nbrooty = 1
-  integer, parameter :: nbrootz = 1
-  integer, parameter :: maxlev = 6
+  integer, parameter :: nbrootz = 4
+  integer, parameter :: maxlev = 5
   integer, parameter :: ncells_x = 16
   integer, parameter :: ncells_y = 16
   integer, parameter :: ncells_z = 16
 
   ! Simulation parameters
-  integer, parameter :: nprocs = 24
-  integer, parameter :: neqtot = 9
+  integer, parameter :: nprocs = 32
+  integer, parameter :: neqtot = 7
 
   ! Gas parameters
   real, parameter :: gamma = 5.0/3.0
@@ -88,9 +89,9 @@ program extract
   real, parameter :: CV = 1.0/(gamma-1.0)
 
   ! Unit scalings
-  real, parameter :: l_sc = 1.0*PC          !< length scale (cm)
-  real, parameter :: d_sc = 1.0*1.3*AMU     !< density scale (g cm^-3)
-  real, parameter :: v_sc = 3.2649e05       !< velocity scale (cm s^-1)
+  real, parameter :: l_sc = 1.98 * RJUP     !< length scale (cm)
+  real, parameter :: d_sc = 1.0*AMU         !< density scale (g cm^-3)
+  real, parameter :: v_sc = 1.0e05          !< velocity scale (cm s^-1)
   real, parameter :: p_sc = d_sc*v_sc**2
   real, parameter :: e_sc = p_sc
   real, parameter :: t_sc = l_sc/v_sc
@@ -109,16 +110,15 @@ program extract
 
   integer :: ilev, bID, blocksused, istat, nb, p
   integer :: i, j, k, i1, j1, k1, ip, jp, i_off, j_off, i2, j2
-  integer :: mesh(7), unitin, nblocks, plane, nout
+  integer :: mesh(7), unitin, nblocks, plane, nout, unitmesh
   integer :: nxmap, nymap, nx, ny, cell_count
   real :: dx(maxlev), pvars(neqtot), uvars(neqtot)
-  character(256) :: filename
+  character(256) :: filename, filemesh
 
   real, allocatable :: block(:,:,:,:)
   real, allocatable :: outmap(:,:,:)
 
   ! ====================================================
-
   ! Allocate output map
   if (cut_axis.eq.AXIS_X) then
     nxmap = nbrooty*2**(maxlev-1)*ncells_y
@@ -153,11 +153,27 @@ program extract
 
   do nout=noutmin,noutmax
 
+  !=============================================================================
+  !  This is to output the mesh
+  call genfname(0, nout, datadir, "MeshCutD.YYYY", ".bin", filemesh)
+  unitmesh = 10 + nprocs
+  open (unit=unitmesh, file=filemesh, status='unknown', access='stream',      &
+        iostat=istat)
+  if (istat.ne.0) then
+    write(*,'(a,a,a)') "Could not open the file '", trim(filemesh), "' !"
+    write(*,'(a,a,a)') "Does the datadir '", trim(datadir), "' exist?"
+    close(unitmesh)
+    stop
+  end if
+  !=============================================================================
+
+
   ! Reset arrays
   block(:,:,:,:) = 0.0
   outmap(:,:,:) = 0.0
 
   cell_count = 0
+  blocksused = 0
 
   ! Process blocks data files from all processes
   do p=0,nprocs-1
@@ -176,8 +192,6 @@ program extract
       stop
     end if
 
-    ! Read file header
-    blocksused = 0
     read(unitin) nblocks
     write(*,'(1x,a,i0,a)') "Processing ", nblocks, " blocks ..."
 
@@ -194,7 +208,7 @@ program extract
       if (plane.ne.-1) then
 
         blocksused = blocksused + 1
-!        write(*,*) "Cutplane=", plane
+        !write(*,*) "Cutplane=", plane
         if (cut_axis.eq.AXIS_X) then
           nx = ncells_y
           ny = ncells_z
@@ -205,6 +219,7 @@ program extract
           nx = ncells_x
           ny = ncells_y
         end if
+
 
         ! Go over cells that intersect cut plane
         do ip=1,nx
@@ -228,9 +243,9 @@ program extract
             ! Calculate finest-mesh absolute coords
             call absCoords (bID,i,j,k,mesh,i1,j1,k1)
 
-!            write(*,'(a,1x,i0,1x,i0,1x,i0,1x,a)') &
-!              "Cell", i, j, k, "absolute coords:"
-!            write(*,'(i0,1x,i0,1x,i0)') i1,j1,k1
+            !write(*,'(a,1x,i0,1x,i0,1x,i0,1x,a)') &
+            !  "Cell", i, j, k, "absolute coords:"
+            !write(*,'(i0,1x,i0,1x,i0)') i1,j1,k1
 
             ! Reduce absolute coords to 2D
             if (cut_axis.eq.AXIS_X) then
@@ -244,9 +259,20 @@ program extract
               j1 = j1
             end if
 
+            !-------------------------------------------------------------------
+            !  Write mesh info
+            if (ip == 1 .and. jp==1) then
+              write(unitmesh) i1, j1, int( nx * 2**(maxlev-ilev) ) , &
+                                      int( ny * 2**(maxlev-ilev) )
+              print*, i1, j1, int( nx*2**(maxlev-ilev)) , ilev, blocksused
+            end if
+            !-------------------------------------------------------------------
+
+            j = min(ncells_y, j)  !????
+
             ! Copy data value into output map. Duplicate value
             ! into multiple cells if block not at highest resolution
-!            write(*,'(a)') "Output map cells:"
+            ! write(*,'(a)') "Output map cells:"
             do i_off=0,2**(maxlev-ilev)-1
               do j_off=0,2**(maxlev-ilev)-1
 
@@ -254,15 +280,15 @@ program extract
                 i2 = i1 + i_off
                 j2 = j1 + j_off
 
-!                write(*,'(i0,1x,i0)') i2, j2
+                ! write(*,'(i0,1x,i0)') i2, j2
                 ! Calculate and de-scale primitives
                 uvars(:) = block(:,i,j,k)
                 call flow2prim (uvars, pvars)
-                pvars(1) = pvars(1)*d_sc
-                pvars(2) = pvars(2)*v_sc
-                pvars(3) = pvars(3)*v_sc
-                pvars(4) = pvars(4)*v_sc
-                pvars(5) = pvars(5)*p_sc
+                pvars(1) = pvars(1) * d_sc
+                pvars(2) = pvars(2) * v_sc
+                pvars(3) = pvars(3) * v_sc
+                pvars(4) = pvars(4) * v_sc
+                pvars(5) = pvars(5) * p_sc
                 outmap(:,i2,j2) = pvars(:)
                 cell_count = cell_count + 1
 
@@ -275,10 +301,14 @@ program extract
       end if
     end do
 
-    write(*,'(1x,a,i0,a)') "Extracted data from ", blocksused, " blocks."
-
   end do
 
+  !-----------------------------------------------------------------------------
+  close(unitmesh)
+  !-----------------------------------------------------------------------------
+
+  write(*,*) ""
+  write(*,'(1x,a,i0,a)') "Extracted data from ", blocksused, " blocks."
   write(*,*) ""
   write(*,*) "Done extracting 2D cut."
   write(*,*) "Total cells copied:", cell_count
@@ -303,6 +333,7 @@ program extract
     call genfname (0, nout, datadir, outmaptpl, ".bin", filename)
     write(*,*) "Writing output map to BIN file ", trim(filename)
     call write2Dbin (outmap, nxmap, nymap, filename)
+    print*, neqtot, nxmap, nymap
   end if
 
   write(*,*) ""
@@ -329,10 +360,11 @@ subroutine getCellPlane (bID, mesh, plane)
   call bounds (bID, mesh, xl, xh, yl, yh, zl, zh)
   call meshlevel (bID, mesh, ilev)
 
-!  write(*,*) bID, ilev
-!  write(*,*) xl/PC, xh/PC
-!  write(*,*) yl/PC, yh/PC
-!  write(*,*) zl/PC, zh/PC
+  !write(*,*) bID, ilev
+  !write(*,*) 'x:', xl, xh
+  !write(*,*) 'y:', yl, yh
+  !write(*,*) 'z:', zl, zh
+  !write(*,*) 'cut loc: ', cut_location
 
   if (cut_axis.eq.AXIS_X) then
     bl = xl
@@ -351,6 +383,7 @@ subroutine getCellPlane (bID, mesh, plane)
   ! Otherwise, return -1.
   if ((cut_location.ge.bl).and.(cut_location.lt.bh)) then
     plane = int((cut_location-bl)/(dx(ilev))) + 1
+    !print'(a,i2,i3,es13.5)', 'Intersected plane, ', plane, ilev, dx(ilev)
   else
     plane = -1
   end if
@@ -373,12 +406,12 @@ subroutine bounds(bID, mesh, xl, xh, yl, yh, zl, zh)
   call meshlevel (bID, mesh, ilev)
   call bcoords(bID, mesh, bx, by, bz)
 
-  xl = (bx-1)*xsize/(nbrootx*2**(ilev-1))
-  xh = bx*xsize/(nbrootx*2**(ilev-1))
-  yl = (by-1)*ysize/(nbrooty*2**(ilev-1))
-  yh = by*ysize/(nbrooty*2**(ilev-1))
-  zl = (bz-1)*zsize/(nbrootz*2**(ilev-1))
-  zh = bz*zsize/(nbrootz*2**(ilev-1))
+  xl = (bx-1) * xsize / ( nbrootx*2**(ilev-1) )
+  xh =   bx   * xsize / ( nbrootx*2**(ilev-1) )
+  yl = (by-1) * ysize / ( nbrooty*2**(ilev-1) )
+  yh =   by   * ysize / ( nbrooty*2**(ilev-1) )
+  zl = (bz-1) * zsize / ( nbrootz*2**(ilev-1) )
+  zh =   bz   * zsize / ( nbrootz*2**(ilev-1))
 
   return
 
@@ -740,21 +773,22 @@ subroutine flow2prim (uvars, pvars)
   real, intent(in) :: uvars(neqtot)
   real, intent(out) :: pvars(neqtot)
 
-  real :: rhov2
 
   pvars(1) = uvars(1)
   pvars(2) = uvars(2)/uvars(1)
   pvars(3) = uvars(3)/uvars(1)
   pvars(4) = uvars(4)/uvars(1)
 
-  rhov2 = (uvars(2)**2 + uvars(3)**2 + uvars(4)**2)/uvars(1)
-  pvars(5) = (uvars(5)-0.5*rhov2)/CV
+
+  pvars(5) = ( uvars(5) -                                               &
+             0.5* (uvars(2)**2 + uvars(3)**2 + uvars(4)**2) /uvars(1) ) / cv
+
 
   ! Floor on pressure
   if (pvars(5).lt.1.0e-30) then
-!    write(logu,*) "PRESSURE FLOOR APPLIED!"
-!    write(logu,*) "u(5)=", uvars(5)
-!    write(logu,*) "p(5)=", pvars(5)
+    write(*,*) "PRESSURE FLOOR APPLIED!"
+    write(*,*) "u(  )=", uvars(5)
+    write(*,*) "p(5)=", pvars(5)
     pvars(5) = 1.0e-30
   end if
 

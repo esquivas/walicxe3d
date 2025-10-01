@@ -34,16 +34,31 @@ module constants
   ! ============================================
 
   ! Fundamental and astrophysical constants (cgs)
-  real, parameter :: AMU  = 1.660538782e-24   !< Atomic Mass Unit
-  real, parameter :: KB   = 1.380650400e-16   !< Boltzmann constant
+  real, parameter :: AMU      = 1.660538782e-24 !< Atomic Mass Unit
+  real, parameter :: KB       = 1.380650400e-16 !< Boltzmann constant
+  real, parameter :: RG       = 8.3145e7        !< Gas constant
+  real, parameter :: GGRAV    = 6.67259e-8      !< Gravitational constant
+  real, parameter :: CLIGHTt  = 2.99E10         !< speed of light in vacuum
+  real, parameter :: ECHARGE  = 4.8032e-10      !< electron charge statcoulomb
+  real, parameter :: EMASS    = 9.10938e-28     !< electron mass
+  real, parameter :: SIGMA_SB = 5.6704e-5       !< Stephan Boltzmann constant
+  real, parameter :: SIGMA_T  = 6.65245e-25     !< Thompson-scat cross-section
+
   real, parameter :: PC   = 3.085677588e+18   !< Parsec
   real, parameter :: AU   = 1.495978707e+13   !< Astronomical unit
+  real, parameter :: HR   = 3600.0            !< One hour in seconds
+  real, parameter :: DAY  = 86400.0           !< One day
   real, parameter :: YR   = 3.155673600e+7    !< Year (Earth, sidereal)
   real, parameter :: KYR  = 3.155673600e+10   !< One thousand years
-  real, parameter :: DAY  = 86400.0           !  One day
-  real, parameter :: MSUN = 1.988920000e+33   !< Solar mass
+
   real, parameter :: KPS  = 1.0e5             !< km/s in cgs
-  real, parameter :: PI   = 3.14159265358979  !< Ratio of perimeter to diameter
+  real, parameter :: PI   = acos(-1.0)        !< Ratio of perimeter to diameter
+  real, parameter :: DEG = PI/180.            !< conversion from deg to rad
+
+  real, parameter :: MSUN = 1.988920000e+33   !< Solar mass
+  real, parameter :: RSUN = 6.955e10          !< solar mass radius
+  real, parameter :: GSUN = 274.e2            !< solar gravity
+  real, parameter :: MJUP = 1.898E30          !< Jupiter mass
   real, parameter :: RJUP = 7.1492E9          !< Jupiter radius
 
   ! Named Constants

@@ -61,6 +61,7 @@ module uniformISM
 
     real :: mu    = mu0
     real :: metal = 1.0
+    real :: Tau   = 0
     real :: y0    = 0.9999  ! (neutral, only a small ion seed)
     real :: dens
     real :: temp
@@ -88,9 +89,10 @@ contains
 
     use constants,  only : AMU, KB, COOL_TABLE_METAL, EOS_H_RATE
     use globals,    only : localBlocks, logu
-    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax, nzmin,&
-                           nzmax, d_sc, v_sc, P_sc, B_sc, cooling_type, metalpas,     &
-                           verbosity, firstpas, eos_type
+    use parameters, only : nbMaxProc, neqtot, nxmin, nxmax, nymin, nymax,      &
+                          nzmin, nzmax, d_sc, v_sc, P_sc, B_sc, cooling_type,  &
+                          metalpas, inH0, tauRT, verbosity, firstpas, eos_type,&
+                          rad_transfer
     use hydro_core, only : prim2flow
 
     implicit none
@@ -154,7 +156,12 @@ contains
 
                 !  Passive scalar for H_rate (neutral fraction)
                 if (eos_type == EOS_H_RATE) then
-                  primit(firstpas) = y0*dens/d_sc
+                  primit(inH0) = y0*dens/d_sc
+                end if
+
+                !  Passive scalar for Tau (rad_transfer)
+                if (rad_transfer) then
+                  primit(TauRT) = 0.0
                 end if
 
                 ! Convert primitives and set flow vars for this cell

@@ -153,6 +153,13 @@ subroutine markByPhysical (locIndx, bID, flag)
   real :: grad, maxgrad, gradx, grady, gradz
   logical, parameter  :: debug = .false.
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  real               :: x, y, z, Rad
+  real, parameter    :: R0 = 5.*Rjup /l_sc !  code units
+  integer            :: lev1, lev2
+  lev1 = maxlev - 1
+  lev2 = maxlev - 2
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   call meshlevel (bID, ilev)
   grad = 0.0
@@ -161,6 +168,28 @@ subroutine markByPhysical (locIndx, bID, flag)
   do i=1,ncells_x
     do j=1,ncells_y
       do k=1,ncells_z
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !  obtain cell position
+        call cellPos (bID, i, j, k, x, y, z, center=.true.)
+        !  distance from planet center
+        Rad = sqrt( x**2 + y**2 + z**2 )  !  code units
+
+        if ( Rad >  R0 ) then
+          if (ilev > lev1) then
+            flag = FLAG_COARSE
+            return
+          end if
+        end if
+
+        if ( Rad > 2.0*R0 ) then
+          if (ilev > lev2) then
+            flag = FLAG_COARSE
+            return
+          end if
+        end if
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
         ! Pressure gradient check
 
@@ -182,7 +211,8 @@ subroutine markByPhysical (locIndx, bID, flag)
         if (grad.ge.refineThres) then
           if (ilev.eq.maxlev) then
             if (debug) then
-              write(logu,'(a,i8,a)') "Block ", bID, " can't be refined any further - you might wanna increase the number of levels"
+              write(logu,'(a,i8,a)') "Block ", bID, &
+ " can't be refined any further - you might wanna increase the number of levels"
             end if
             flag = FLAG_NONE
             return
@@ -208,7 +238,8 @@ subroutine markByPhysical (locIndx, bID, flag)
         if (grad.ge.refineThres) then
           if (ilev.eq.maxlev) then
             if (debug) then
-              write(logu,'(a,i8,a)') "Block ", bID, " can't be refined any further - you might wanna increase the number of levels"
+              write(logu,'(a,i8,a)') "Block ", bID, &
+" can't be refined any further - you might wanna increase the number of levels"
             end if
             flag = FLAG_NONE
             return
@@ -304,7 +335,8 @@ subroutine refineBlock (fatherID)
   call find (fatherID, localBlocks, nbMaxProc, fatherIndex)
   if (fatherIndex.eq.-1) then
       write(logu,*) ""
-      write(logu,'(a,i5,a)') "Block ", fatherID, " is not a local block; can't refine it!"
+      write(logu,'(a,i5,a)') "Block ", fatherID, &
+      " is not a local block; can't refine it!"
       write(logu,'(1x,a)') "***ABORTING***"
     call clean_abort (ERROR_LOCAL_BID_NOT_FOUND)
   end if
@@ -314,7 +346,8 @@ subroutine refineBlock (fatherID)
   call meshlevel(fatherID, ilev)
   if (ilev.eq.maxlev) then
     write(logu,*) ""
-    write(logu,'(a,i5,a)') "Trying to refine block ", fatherID, " past max mesh level! Aborting!"
+    write(logu,'(a,i5,a)') "Trying to refine block ", fatherID, &
+    " past max mesh level! Aborting!"
     write(logu,'(a)') "***ABORTING***"
     call clean_abort (ERROR_ALREADY_MAX_LEV)
   end if
