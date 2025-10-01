@@ -5,7 +5,7 @@ from constants import RJUP, AMH, KB
 from walicxe3d_utils import *
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-from guacho_utils import *
+#from guacho_utils import *
 
 
 ################################################################################
@@ -171,7 +171,7 @@ distributed_write(U_big,nout,header,path_out=path_out,verbose=False)
 U_big = []
 
 ################################################################################
-
+'''
 # verify reading the blocks created``
 dens = readbin3d_all(nout,0,path=path_out, scale=False )
 
@@ -180,3 +180,4 @@ plt.figure(2) ; plt.clf()
 plt.imshow(dens[:,128,:].T, norm=LogNorm(vmin=100, vmax=1e5), \
            origin='lower', cmap = 'cividis' )
 plt.colorbar()
+'''
