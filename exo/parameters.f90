@@ -62,7 +62,7 @@ module parameters
   !> Available memory (RAM) *per process*, in MB
   ! This will determine the number of blocks allocated by the code
   ! Note that 1 MB = 1024 kB = 1024*1024 or 2^20 bytes
-  real, parameter :: RAM_per_proc = 2048
+  real, parameter :: RAM_per_proc = 1024 !2048
 
   ! ============================================
   ! Adaptive Mesh parameters
