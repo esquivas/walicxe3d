@@ -33,6 +33,7 @@ program Walicxe3D
 
   use parameters    ! Code parameters
   use globals       ! Runtime global variables
+  !use userconds
   use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
   use clean_quit,    only  : deinit
   use init
@@ -45,6 +46,7 @@ program Walicxe3D
   use report,        only : main_report
   use hrate,         only : updateNeutralFraction
   use radTransfer,   only : DoRadTransfer
+
   implicit none    ! ALWAYS mandatory
 
   ! Timing mark
@@ -108,18 +110,19 @@ program Walicxe3D
     ! Radiative cooling
     call cooling ()
 
+   ! Data output (if scheduled)
+    if (dumpout) then
+      if (rad_transfer) call DoRadTransfer ()
+      call writeOutput(nextout)
+      nextout = nextout + 1
+      dumpout = .false. ! until next time
+    end if
+
     ! Update AMR grid
     call admesh ()
 
     ! Load balance
     call loadBalance ()
-
-    ! Data output (if scheduled)
-    if (dumpout) then
-      call writeOutput(nextout)
-      nextout = nextout + 1
-      dumpout = .false. ! until next time
-    end if
 
     ! Report progress
     call main_report ()
