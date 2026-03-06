@@ -130,10 +130,10 @@ subroutine initmain ()
         write(*,'(a)') "Could not open the log file!"
         write(*,'(a,a)') "Tried to open: ", logfile
         write(*,'(a,a,a)') "Does the logdir '", trim(logdir), "' exist ?"
-        write(*,'(1x,a)') "***ABORTING***"
+        !write(*,'(1x,a)') "***ABORTING***"
       end if
       close(logu)
-      call clean_abort (ERROR_NO_LOGFILE)
+      !call clean_abort (ERROR_NO_LOGFILE)
     end if
 
   else
