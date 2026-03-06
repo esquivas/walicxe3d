@@ -84,12 +84,14 @@ contains
     real (kind=8)   :: Te, dHp,de,dOI,dOII,omega,omegaL,omegaH,frac,qla
     real (kind=8)   :: ecoll,cion,eion,erec,Tm,Tm2,eOI,eOII,equil,fr,ex2,tanh
     real (kind=8)   :: betaf, HIIcool
+    real            :: x2p
 
     Te  = max(Te0,10.)
     dHp = (1.-X1)*den    ! hydrogen density
     de  = dHp+1.E-4*den  ! electron density
     dOI = XO*dH0         ! oxigen density
     dOII= XO*dHp         ! ionized oxigen density
+    x2p = x2             ! avoid warning, should remove later on
 
     if(Te <= 1e4 ) then
       aloss = 1e-30
@@ -197,7 +199,7 @@ contains
           y1  = real( mu0*PRIM(bIndx,inH0,i,j,k) / PRIM(bIndx,1,i,j,k) , 8)
 
           !# update the neutral fraction for the conserved arrays Us
-          U (bIndx,inH0,i,j,k) = PRIM(bIndx,inH0,i,j,k)
+          U (bIndx,inH0,i,j,k) = PRIM(bIndx,inH0,i,j,k) !!!this is already done at the end of h_rate routine
 
           ! Calculate temperature of this cell
           call calcTemp (PRIM(bIndx,:,i,j,k), Temp)
@@ -205,65 +207,64 @@ contains
           ! Cooling not applied below cool_Tmin
           !if (Temp > Tmin_cool) then
           !  Lower Temperature coverage to allow photo-heating @ low T
-          if (Temp > T_floor) then
+          !if (Temp > T_floor) then
 
-            if (Temp > Tmin_cool) then
-              !  get the energy losses L_0 ([erg cm^-3 s^-1])
-              L0 = aloss(y0,y1,dh,dh0,real(Temp,8))    !/dh**2
-            else
-              L0 = 1e-30 !  Check a proper value for this
-            end if
-
-            if (rad_transfer) then
-              dtau = a0 * dz(ilev) * l_sc * dh * y0
-              if (k==0) then
-                flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k))
-              else
-                flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k-1))
-              endif
-                gain = 3.8e-12* flux * (1.0-exp(-dtau)) / dh0 / dl
-                tprime = max( gain*real(Temp,8)/L0, 7000.)
-            else
-              tprime=10.
-            end if
-
-            !gain = 0.0   !# add later
-            !Tprime = 10. ! T_floor
-
-            ce = (2.0*L0)/(3.0*Kb*dH*real(Temp,8))
-            T1=Tprime+(Temp-Tprime)*exp(-ce*dt_seconds) !# new temperature
-
-            cool_factor = T1 / Temp
-            frac_loss   = 1.0 - cool_factor
-
-            ! Record maximum cooling for this block before limiting
-            maxloss = max(maxloss, frac_loss)
-
-            ! Limit cool_factor directly, if needed
-            if (cool_factor.lt.1.0-cooling_limit) then
-              cool_factor = 1.0-cooling_limit
-            end if
-
-            ! Impose a temperature floor by adjusting cool_factor, if needed
-            ! Set to 10 K by default
-            T1 = Temp * cool_factor
-
-            if (T1 < T_floor) then
-              T1 = T_floor
-              cool_factor = T_floor / Temp
-            end if
-
-            ! Update pressure and total energy
-            PRIM(bIndx,5,i,j,k) = PRIM(bIndx,5,i,j,k) * cool_factor
-
-            ETH = CV * PRIM(bIndx,5,i,j,k)
-            vel2 = PRIM(bIndx,2,i,j,k)**2                                    &
-                 + PRIM(bIndx,3,i,j,k)**2                                    &
-                 + PRIM(bIndx,4,i,j,k)**2
-            EK = 0.5 * PRIM(bIndx,1,i,j,k) * vel2
-            U(bIndx,5,i,j,k) = EK + ETH
-
+          if (Temp > Tmin_cool) then
+            !  get the energy losses L_0 ([erg cm^-3 s^-1])
+            L0 = aloss(y0,y1,dh,dh0,real(Temp,8))    !/dh**2
+          else
+            L0 = 1e-30 !  Check a proper value for this
+            !return
           end if
+
+          if (rad_transfer) then
+            dtau = a0 * dz(ilev) * l_sc * dh * y0
+            if (k==0) then
+              flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k))
+            else
+              flux = F0*exp(-PRIM(bIndx,TauRT,i,j,k-1))
+            endif
+              gain = 3.8e-12* flux * (1.0-exp(-dtau)) / dh0 / dl
+              tprime = max( gain*real(Temp,8)/L0, 7000.)
+          else
+            tprime=10.
+          end if
+
+          !gain = 0.0   !# add later
+          !Tprime = 10. ! T_floor
+
+          ce = (2.0*L0)/(3.0*Kb*dH*real(Temp,8))
+          T1=Tprime+(Temp-Tprime)*exp(-ce*dt_seconds) !# new temperature
+
+          cool_factor = T1 / Temp
+          frac_loss   = 1.0 - cool_factor
+
+          ! Record maximum cooling for this block before limiting
+          maxloss = max(maxloss, frac_loss)
+
+          ! Limit cool_factor directly, if needed
+          if (cool_factor.lt. 1.0-cooling_limit) then
+            cool_factor = 1.0-cooling_limit
+          end if
+
+          ! Impose a temperature floor by adjusting cool_factor, if needed
+          ! Set to 10 K by default
+          T1 = Temp * cool_factor
+
+          if (T1 < T_floor) then
+            T1 = T_floor
+            cool_factor = T_floor / Temp
+          end if
+
+          ! Update pressure and total energy
+          PRIM(bIndx,5,i,j,k) = PRIM(bIndx,5,i,j,k) * cool_factor
+          ETH = CV * PRIM(bIndx,5,i,j,k)
+          vel2 = PRIM(bIndx,2,i,j,k)**2                                    &
+               + PRIM(bIndx,3,i,j,k)**2                                    &
+               + PRIM(bIndx,4,i,j,k)**2
+          EK = 0.5 * PRIM(bIndx,1,i,j,k) * vel2
+          U(bIndx,5,i,j,k) = EK + ETH
+        !end if
 
         end do
       end do
