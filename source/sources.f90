@@ -116,8 +116,10 @@ contains
     implicit none
     integer, intent(in)  :: bID, locIndx, lev, i, j, k
     real, intent(out)    :: s(neqtot)
+    integer              :: level
     !real :: x, y, z, r
 
+    level = lev
     ! resets the source terms
     s(:) = 0.
 
