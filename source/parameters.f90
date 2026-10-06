@@ -176,6 +176,11 @@ module parameters
   !> Directory for logfiles (may be data directory)
   character(*), parameter :: logdir = datadir
 
+  !> Run conservation diagnostics
+  logical, parameter :: enable_cons_diagnostics = .false.
+  !> Directory to write conservation diagnostics
+  character(*), parameter :: diagdir = datadir
+
   ! ============================================
   ! Solver parameters
   ! ============================================
