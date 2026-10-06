@@ -29,8 +29,6 @@
 
 module cooling_H
 
-!#ifdef PASSIVES
-
   implicit none
 
 contains
@@ -274,6 +272,5 @@ contains
 
 !======================================================================
 
-!#endif
 
 end module cooling_H
