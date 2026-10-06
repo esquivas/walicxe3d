@@ -78,6 +78,7 @@ sources.o \
 godunov.o \
 hydro_solver.o \
 report.o  \
+diagnostics.o \
 main.o
 
 # List of modules and objects to compile the Column Density facility
