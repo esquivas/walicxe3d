@@ -72,8 +72,8 @@ subroutine HLLEfluxes (locIndx, order)
 
   case (1)   ! First-order
 
-    do k=0,ncells_z
-      do j=0,ncells_y
+    do k=1,ncells_z
+      do j=1,ncells_y
         do i=0,ncells_x
 
           ! X dimension
@@ -81,7 +81,14 @@ subroutine HLLEfluxes (locIndx, order)
           pr(:) = PRIM(locIndx,:,i+1,j,k)
           call primfhlle (pL, pR, ff)
           FC(:,i,j,k) = ff(:)
-          
+        end do
+      end do
+    end do
+
+    do k=1,ncells_z
+      do j=0,ncells_y
+        do i=1,ncells_x
+
           ! Y dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j+1,k)
@@ -90,7 +97,15 @@ subroutine HLLEfluxes (locIndx, order)
           call primfhlle (pL, pR, ff)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
-          
+
+        end do
+      end do
+    end do
+
+    do k=0,ncells_z
+      do j=1,ncells_y
+        do i=1,ncells_x
+
           ! Z dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j,k+1)
@@ -99,7 +114,7 @@ subroutine HLLEfluxes (locIndx, order)
           call primfhlle (pL, pR, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)
-        
+
         end do
       end do
     end do
@@ -108,8 +123,8 @@ subroutine HLLEfluxes (locIndx, order)
 
   case (2)  ! Second-order - requires limiter
 
-    do k=0,ncells_z
-      do j=0,ncells_y
+    do k=1,ncells_z
+      do j=1,ncells_y
         do i=0,ncells_x
 
           ! X dimension
@@ -120,6 +135,14 @@ subroutine HLLEfluxes (locIndx, order)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
           call primfhlle (pl, pr, ff)
           FC(:,i,j,k) = ff(:)
+
+        end do
+      end do
+    end do
+
+    do k=1,ncells_z
+      do j=0,ncells_y
+        do i=1,ncells_x
 
           ! Y dimension
           pll(:) = PRIM(locIndx,:,i,j-1,k)
@@ -135,6 +158,14 @@ subroutine HLLEfluxes (locIndx, order)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
 
+         end do
+      end do
+    end do
+
+    do k=0,ncells_z
+      do j=1,ncells_y
+        do i=1,ncells_x
+
           ! Z dimension
           pll(:) = PRIM(locIndx,:,i,j,k-1)
           pl(:)  = PRIM(locIndx,:,i,j,k  )
@@ -148,7 +179,7 @@ subroutine HLLEfluxes (locIndx, order)
           call primfhlle (pl, pr, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)
-      
+
         end do
       end do
     end do
