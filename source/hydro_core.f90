@@ -115,8 +115,8 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
   use globals, only : logu
   implicit none
 
-  real, intent(in) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
-  real, intent(out) :: pvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+  real, intent(in)    :: uvars(nbMaxProc,neqtot,nxmin:nxmax,nymin:nymax,nzmin:nzmax)
+  real, intent(inout) :: pvars(nbMaxProc,neqtot,nxmin:nxmax,nymin:nymax,nzmin:nzmax)
   integer, intent(in) :: locIdx
   integer, intent(in) :: cells
   integer, intent(out) :: badcells
@@ -157,7 +157,7 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
     ! Right ghost cells
     do k=nzmin, nzmax!1,ncells_z
       do j=nymin, nymax!1,ncells_y
-        do i=ncells_x+1,ncells_x+2
+        do i=ncells_x+1,nxmax
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
             if (istat.ne.0) badcells = badcells + 1
@@ -180,7 +180,7 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
 
     ! Back ghost cells
     do k=nzmin, nzmax!1,ncells_z
-      do j=ncells_y+1,ncells_y+2
+      do j=ncells_y+1,nymax
         do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
             call flow2prim (uvars(locIdx,:,i,j,k), pvars(locIdx,:,i,j,k), istat)
@@ -202,8 +202,8 @@ subroutine calcPrimsBlock (uvars, pvars, locIdx, cells, badcells)
       end do
     end do
 
-    ! Bottom ghost cells
-    do k=ncells_z+1,ncells_z+2
+    ! Top ghost cells
+    do k=ncells_z+1,nzmax
       do j=nymin, nymax!1,ncells_y
         do i=nxmin, nxmax!1,ncells_x
           if (uvars(locIdx,1,i,j,k).ne.0.0) then
@@ -538,9 +538,10 @@ subroutine cfast(p,d,bx,by,bz,cfx,cfy,cfz)
   real :: b2
 
   b2=bx*bx+by*by+bz*bz
-  cfx=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*bx*bx))/d)
-  cfy=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*by*by))/d)
-  cfz=sqrt(0.5*((gamma*p+b2)+sqrt((gamma*p+b2)**2-4.*gamma*p*bz*bz))/d)
+
+  cfx=sqrt(0.5*((gamma*p+b2)+sqrt(max(0.0,(gamma*p+b2)**2-4.*gamma*p*bx*bx)))/d)
+  cfy=sqrt(0.5*((gamma*p+b2)+sqrt(max(0.0,(gamma*p+b2)**2-4.*gamma*p*by*by)))/d)
+  cfz=sqrt(0.5*((gamma*p+b2)+sqrt(max(0.0,(gamma*p+b2)**2-4.*gamma*p*bz*bz)))/d)
 
 end subroutine cfast
 
@@ -563,7 +564,8 @@ subroutine cfastX(prim,cfX)
   b2=prim(6)**2+prim(7)**2+prim(8)**2
   cs2va2 = (gamma*prim(5)+b2)/prim(1)   ! cs^2 + ca^2
 
-  cfx=sqrt(0.5*(cs2va2+sqrt(cs2va2**2-4.*gamma*prim(5)*prim(6)**2/prim(1)/prim(1) ) ) )
+  cfx=sqrt(0.5*(cs2va2 + sqrt( max(0.0,                                         &
+                 cs2va2**2 - 4.*gamma*prim(5)*prim(6)**2/prim(1)/prim(1) ) ) ) )
 
 end subroutine cfastX
 
@@ -668,9 +670,10 @@ contains
       s = sign(1.0,a)
       average = s*max(0.0, min(abs(a), s*b))
 
-    case (LIMITER_ALBADA)   ! NOT WORKING
+    case (LIMITER_ALBADA)
       eps = 1.0e-7
-      average = (a*(b*b+eps)+b*(a*a+eps))/(a*a+b*b*eps)
+      average = (a*(b*b+eps)+b*(a*a+eps))/(a*a + b*b + 2.0*eps)
+      if (a*b < 0) average = 0.0
 
     case (LIMITER_UMIST)
       s = sign(1.0,a)
