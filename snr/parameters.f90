@@ -194,6 +194,11 @@ module parameters
   !> Directory for logfiles (may be data directory)
   character(*), parameter :: logdir = "./hrate/logs/"!datadir
 
+  !> Run conservation diagnostics
+  logical, parameter :: enable_cons_diagnostics = .false.
+  !> Directory to write conservation diagnostics
+  character(*), parameter :: diagdir = datadir
+
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
   !!   level 1 : Minimal (Initial Report,current iteration, and output info)
