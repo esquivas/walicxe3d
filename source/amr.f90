@@ -165,11 +165,11 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! Pressure gradient check
 
         gradx = abs(PRIM(locIndx,5,i+1,j,k)-PRIM(locIndx,5,i-1,j,k)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  !(2*dx(ilev))  use relative change
         grady = abs(PRIM(locIndx,5,i,j+1,k)-PRIM(locIndx,5,i,j-1,k)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  !(2*dx(ilev))
         gradz = abs(PRIM(locIndx,5,i,j,k+1)-PRIM(locIndx,5,i,j,k-1)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  !(2*dx(ilev))
         grad = max( gradx, grady, gradz )
         !   DEBUG ##############################################################
         !grad = 0.
@@ -195,11 +195,11 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! Density gradient check
 
         gradx = abs(PRIM(locIndx,1,i+1,j,k)-PRIM(locIndx,1,i-1,j,k)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  !(2*dx(ilev))
         grady = abs(PRIM(locIndx,1,i,j+1,k)-PRIM(locIndx,1,i,j-1,k)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  !(2*dx(ilev))
         gradz = abs(PRIM(locIndx,1,i,j,k+1)-PRIM(locIndx,1,i,j,k-1)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  !(2*dx(ilev))
         grad = max( gradx, grady, gradz )
         maxgrad = max( maxgrad, grad )
 
@@ -470,48 +470,72 @@ subroutine neighborLevel(bID, dir, neighID)
 
   case (LEFT)
     if (x.eq.1) then
-      neighID = -1
-      return
+      if (bc_left.eq.BC_PERIODIC) then
+        xp = nx
+      else
+        neighID = -1
+        return
+      end if
     else
       xp = x-1
     end if
 
   case (RIGHT)
     if (x.eq.nx) then
-      neighID = -1
-      return
+      if (bc_right.eq.BC_PERIODIC) then
+        xp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       xp = x+1
     end if
 
   case (FRONT)
     if (y.eq.1) then
-      neighID = -1
-      return
+      if (bc_front.eq.BC_PERIODIC) then
+        yp = ny
+      else
+        neighID = -1
+        return
+      end if
     else
       yp = y-1
     end if
 
   case (BACK)
     if (y.eq.ny) then
-      neighID = -1
-      return
+      if (bc_back.eq.BC_PERIODIC) then
+        yp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       yp = y+1
     end if
 
   case (BOTTOM)
     if (z.eq.1) then
-      neighID = -1
-      return
+      if (bc_bottom.eq.BC_PERIODIC) then
+        zp = nz
+      else
+        neighID = -1
+        return
+      end if
     else
       zp = z-1
     end if
 
   case (TOP)
     if (z.eq.nz) then
-      neighID = -1
-      return
+      if (bc_top.eq.BC_PERIODIC) then
+        zp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       zp = z+1
     end if
