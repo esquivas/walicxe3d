@@ -11,19 +11,18 @@ PROGRAM= Walicxe3D
 COMPILER= ifort
 #COMPILER= gfortran
 
-
 #  Search Path for Makefile, object files are searched in the order below
 VPATH = . : ../source
 
 # Additional user compiler flags
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
-#USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
+USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces -fpe0 -g
 ## gfortran-compatible flags
-USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
+#USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
 ## Generic flags
-USER_FLAGS= -O3
+#USER_FLAGS= -O3
 
 # ============================================= #
 # Compilation Time Parameters (Y=on, N=off)     #
@@ -64,6 +63,10 @@ snr.o \
 winds.o \
 orbits.o \
 user.o \
+rad-transfer.o \
+hrate.o \
+cooling_h.o \
+cooling_schure.o \
 cooling.o \
 init.o \
 output.o \
@@ -77,6 +80,7 @@ hlld.o \
 sources.o \
 godunov.o \
 hydro_solver.o \
+diagnostics.o \
 report.o  \
 main.o
 
