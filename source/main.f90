@@ -46,6 +46,7 @@ program Walicxe3D
   use report,        only : main_report
   use hrate,         only : updateNeutralFraction
   use radTransfer,   only : DoRadTransfer
+  use diagnostics,   only : conservation_diagnostics
 
   implicit none    ! ALWAYS mandatory
 
@@ -80,6 +81,8 @@ program Walicxe3D
     nextout = 1
   end if
 
+  if (enable_cons_diagnostics) call conservation_diagnostics ()  ! <-- it = 0 baseline
+
   ! Main Loop
   !do while(.false.)
   do while (time <= tfin/t_sc)
@@ -109,6 +112,9 @@ program Walicxe3D
 
     ! Radiative cooling
     call cooling ()
+
+    ! Conservation diagnostics
+    if (enable_cons_diagnostics) call conservation_diagnostics ()
 
    ! Data output (if scheduled)
     if (dumpout) then
