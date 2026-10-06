@@ -72,8 +72,8 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (1)   ! First-order
 
-    do k=0,ncells_z
-      do j=0,ncells_y
+    do k=1,ncells_z
+      do j=1,ncells_y
         do i=0,ncells_x
 
           ! X dimension
@@ -81,7 +81,15 @@ subroutine HLLDfluxes (locIndx, order)
           pr(:) = PRIM(locIndx,:,i+1,j,k)
           call primfhlld (pL, pR, ff)
           FC(:,i,j,k) = ff(:)
-          
+
+        end do
+      end do
+    end do
+
+    do k=1,ncells_z
+      do j=0,ncells_y
+        do i=1,ncells_x
+
           ! Y dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j+1,k)
@@ -90,7 +98,15 @@ subroutine HLLDfluxes (locIndx, order)
           call primfhlld (pL, pR, ff)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
-          
+
+        end do
+      end do
+    end do
+
+    do k=0,ncells_z
+      do j=1,ncells_y
+        do i=1,ncells_x
+
           ! Z dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j,k+1)
@@ -99,7 +115,7 @@ subroutine HLLDfluxes (locIndx, order)
           call primfhlld (pL, pR, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)
-        
+
         end do
       end do
     end do
@@ -108,8 +124,8 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (2)  ! Second-order - requires limiter
 
-    do k=0,ncells_z
-      do j=0,ncells_y
+    do k=1,ncells_z
+      do j=1,ncells_y
         do i=0,ncells_x
 
           ! X dimension
@@ -120,7 +136,15 @@ subroutine HLLDfluxes (locIndx, order)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
           call primfhlld (pl, pr, ff)
           FC(:,i,j,k) = ff(:)
-          
+
+        end do
+      end do
+    end do
+
+    do k=1,ncells_z
+      do j=0,ncells_y
+        do i=1,ncells_x
+
           ! Y dimension
           pll(:) = PRIM(locIndx,:,i,j-1,k)
           pl(:)  = PRIM(locIndx,:,i,j  ,k)
@@ -134,7 +158,15 @@ subroutine HLLDfluxes (locIndx, order)
           call primfhlld (pl, pr, ff)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
-          
+
+        end do
+      end do
+    end do
+
+    do k=0,ncells_z
+      do j=1,ncells_y
+        do i=1,ncells_x
+
           ! Z dimension
           pll(:) = PRIM(locIndx,:,i,j,k-1)
           pl(:)  = PRIM(locIndx,:,i,j,k  )
@@ -148,7 +180,7 @@ subroutine HLLDfluxes (locIndx, order)
           call primfhlld (pl, pr, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)
-          
+
         end do
       end do
     end do
@@ -238,11 +270,11 @@ subroutine primfhlld(priml,primr,ff)
     sMmuL=sM - priml(2)
     denl=priml(1)*slmul*slmsM-bx**2
 
-    if(denl == 0) then
+    if( abs(denl) < 1.0e-8*pst) then  ! avoid comparing to == 0
       vstl = primL(3)
       wstl = primL(4)
-      bystl= 0.!primL(7)
-      bzstl= 0.!primL(8)
+      bystl= primL(7)
+      bzstl= primL(8)
       !print*,'stopped @ HLLD'
       !stop
     else
@@ -268,11 +300,9 @@ subroutine primfhlld(priml,primr,ff)
     ff(7) = bystl*sM-bx*vstl
     ff(8) = bzstl*sM-bx*wstl
 
-#ifdef PASSIVES
     if (npassive >= 1) then
       ff(firstpas:neqtot)=sM*priml(firstpas:neqtot)*slmul/slmsM
     end if
-#endif
 
     return
   endif
@@ -286,11 +316,11 @@ subroutine primfhlld(priml,primr,ff)
     sMmuR=sM - primr(2)
     denr=primr(1)*srmur*sRmsM-bx**2
 
-    if(denr == 0) then
-      vstl = primL(3)
-      wstl = primL(4)
-      bystl= 0.!primL(7)
-      bzstl= 0.!primL(8)
+    if(abs(denr) < 1.0e-8*pst) then    ! avoid comparing to == 0
+      vstr = primr(3)
+      wstr = primr(4)
+      bystr= primr(7)
+      bzstr= primr(8)
       !print*,'stopped @ HLLD'
       !stop
     else
@@ -316,11 +346,9 @@ subroutine primfhlld(priml,primr,ff)
     ff(7) = bystr*sM-bx*vstr
     ff(8) = bzstr*sM-bx*wstr
 
-#ifdef PASSIVES
     if (npassive >= 1) then
       ff(firstpas:neqtot)=sM*primr(firstpas:neqtot)*srmur/srmsM
     end if
-#endif
 
     return
   endif
@@ -332,11 +360,11 @@ subroutine primfhlld(priml,primr,ff)
   denl=priml(1)*slmul*slmsM-bx**2
   denr=primr(1)*srmur*srmsM-bx**2
 
-  if(denl == 0) then
+  if( abs(denl) <1.0e-8*pst) then
     vstl =priml(3)
     wstl =priml(4)
-    bystl=0.!priml(7)
-    bzstl=0.!priml(8)
+    bystl=priml(7)
+    bzstl=priml(8)
     !print*,'stopped @ HLLD'
     !stop
   else
@@ -346,11 +374,11 @@ subroutine primfhlld(priml,primr,ff)
     bzstl= priml(8)*( priml(1)*slmul**2 - bx**2 )/denl            !bzL*
   endif
 
-  if(denr == 0) then
+  if( abs(denr) < 1.0e-8*pst) then
     vstr =primr(3)
     wstr =primr(4)
-    bystr=0.!primr(7)
-    bzstr=0.!primr(8)
+    bystr=primr(7)
+    bzstr=primr(8)
     !print*,'stopped @ HLLD'
     !stop
   else
@@ -395,11 +423,9 @@ subroutine primfhlld(priml,primr,ff)
     ff(7) = bystst*sM-bx*vstst
     ff(8) = bzstst*sM-bx*wstst
 
-#ifdef PASSIVES
     if (npassive >= 1) then
-      ff(firstpas:neqtot) = sM*priml(nfirstpas:neqtot)*slmul/slmsM
+      ff(firstpas:neqtot) = sM*priml(firstpas:neqtot)*slmul/slmsM
     end if
-#endif
 
     return
   endif
@@ -426,11 +452,9 @@ subroutine primfhlld(priml,primr,ff)
     ff(7) = bystst*sM-bx*vstst
     ff(8) = bzstst*sM-bx*wstst
 
-#ifdef PASSIVES
     if (npassive >= 1) then
       ff(firstpas:neqtot) = sM*primr(firstpas:neqtot)*srmur/srmsM
     end if
-#endif
 
     return
   endif
