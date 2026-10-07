@@ -216,6 +216,9 @@ module parameters
   !!    SOLVER_HLLD: HLLD Riemann solver (second order)
   integer, parameter :: solver_type = SOLVER_HLLD
 
+  !> Run conservation diagnostics
+  logical, parameter :: enable_cons_diagnostics = .true.
+
   !> Slope Limiter (to be used with the 2nd order HLL* solvers)
   !! Currently recognized options:
   !!  LIMITER_NO_AVERAGE = Performs no average (1st order in space)
@@ -227,7 +230,6 @@ module parameters
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
   integer, parameter :: limiter_type = LIMITER_MINMOD
-
 
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
