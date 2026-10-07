@@ -50,6 +50,8 @@ program Walicxe3D
 
   implicit none    ! ALWAYS mandatory
 
+  integer :: uchk, istat
+
   ! Timing mark
   call tic(start_mark)
 
@@ -97,6 +99,31 @@ program Walicxe3D
       write(logu,'(a)') &
 "=============================================================================="
     end if
+
+    !---------------------------------------------------------------------------
+    ! To force checkpoint create a file named 'checkpoint' in output dir
+    ! e.g. 'touch <outputdir>/checkpoint'
+    ! master checks for existence of file
+    ! Output 999 is for preview only - do not warm start from it.
+    if (rank == master) inquire (file=trim(datadir)//'checkpoint', exist=checkpoint)
+    call mpi_bcast (checkpoint, 1, mpi_logical, master, mpi_comm_world, ierr)
+
+    if (checkpoint) then
+      call writeOutput (999)
+      if (rank == master) then
+        write(logu,'(a,es15.7)')                                               &
+                     ' ****** wrote checkpoint (output 999) ****** time: ', time
+        open (newunit=uchk, file=trim(datadir)//'checkpoint', status='old',    &
+              iostat=istat)
+        if (istat == 0) close (uchk, status='delete')
+      end if
+      checkpoint = .false.
+
+      ! syncs all processors
+      call mpi_barrier(mpi_comm_world, ierr)
+    end if
+    !---------------------------------------------------------------------------
+
 
     ! Hydro Solver
     call hydroSolver ()
