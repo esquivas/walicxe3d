@@ -199,6 +199,9 @@ module parameters
   !!    SOLVER_HLLE: HLLE Riemann solver (second order)
   integer, parameter :: solver_type = SOLVER_HLLC
 
+  !> Run conservation diagnostics
+  logical, parameter :: enable_cons_diagnostics = .true.
+
   !> Slope Limiter (to be used with the HLL/HLLC solvers)
   !! Currently recognized options:
   !!  LIMITER_NONE: use arithmetic average, i.e., no limiter
