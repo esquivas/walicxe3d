@@ -1105,7 +1105,7 @@ end subroutine cellPos
 !===============================================================================
 
 !> @brief Returns the rank of the process who owns this bID
-!> @details Returns -1 if the bID is not in globalBlocks
+!> @details Returns MPI_PROC_NULL if the bID is not in globalBlocks
 !> @param bID The (absolute) block ID of the block
 !> @param process The block owner's rank
 subroutine getOwner (bID, owner)
@@ -1120,7 +1120,7 @@ subroutine getOwner (bID, owner)
   integer :: gIndx
 
   if (bID.eq.-1) then
-    owner = -1
+    owner = MPI_PROC_NULL
     return
   end if
 
@@ -1129,7 +1129,7 @@ subroutine getOwner (bID, owner)
   if (gIndx.ne.-1) then
     owner = (gIndx-1)/nbMaxProc
   else
-    owner = -1
+    owner = MPI_PROC_NULL
   end if
   return
 
