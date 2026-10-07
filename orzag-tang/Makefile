@@ -15,9 +15,12 @@ COMPILER= ifort
 VPATH = . : ../source
 
 # Additional user compiler flags
+
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
-USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces -fpe0 -g
+#USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces -fpe0 -g
+USER_FLAGS= -O3 -g -traceback -check bounds -warn all -nogen-interfaces
+
 ## gfortran-compatible flags
 #USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
@@ -71,6 +74,7 @@ cooling.o \
 init.o \
 output.o \
 boundary.o \
+flux_correction.o \
 lax.o \
 flux_cd.o \
 hll.o \
