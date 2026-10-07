@@ -54,6 +54,7 @@ module globals
   real    :: dt            !< Current numerical timestep
   integer :: nextout       !< Number of next output
   logical :: dumpout       !< Is time to write to write output
+  logical :: checkpoint = .false. !< flag used to force checkpoint
 
   ! Generic globals
   integer :: start_mark     !< Timing mark (start of simulation)
