@@ -65,7 +65,7 @@ module parameters
   ! Simulation domain physical size (all in cgs)
   real, parameter :: xphystot = 1.0       !< Physical domain size along x
   real, parameter :: yphystot = 1.0       !< Physical domain size along y
-  real, parameter :: zphystot = 64.0/256. !< Physical domain size along z
+  real, parameter :: zphystot = 32./128.  !< Physical domain size along z
 
   ! Mesh Geometry
 
@@ -88,9 +88,9 @@ module parameters
   ! Specify the maximum number of cells desired at the highest refinement
   ! level
   ! > MUST BE POWERS OF TWO! <
-  integer, parameter :: p_maxcells_x = 256
-  integer, parameter :: p_maxcells_y = 256
-  integer, parameter :: p_maxcells_z = 64
+  integer, parameter :: p_maxcells_x = 128
+  integer, parameter :: p_maxcells_y = 128
+  integer, parameter :: p_maxcells_z = 32
 
   ! -- OR --
 
@@ -175,7 +175,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlld-8w-40p/output/"
+  character(*), parameter :: datadir = "./hlld-8w-40p-FC/output/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -186,9 +186,9 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir  = "./hlld-8w-40p/logs/"!datadir
+  character(*), parameter :: logdir  = "./hlld-8w-40p-FC/logs/"!datadir
   !> Directory to write conservation diagnostics
-  character(*), parameter :: diagdir = "./hlld-8w-40p/"
+  character(*), parameter :: diagdir = "./hlld-8w-40p-FC/"
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -224,6 +224,9 @@ module parameters
   !!    SOLVER_HLLE: HLLE Riemann solver (second order)
   !!    SOLVER_HLLD: HLLD Riemann solver (second order)
   integer, parameter :: solver_type = SOLVER_HLLD
+
+  !> Enable flux correction at fine-coarse interfaces
+  logical, parameter :: enable_flux_correction = .true.
 
   !> Slope Limiter (to be used with the HLL/HLLC solvers)
   !! Currently recognized options:
