@@ -76,8 +76,10 @@ subroutine normalBoundary (depth, uvars)
   use globals
   use parameters
   use tictoc
-  use utils, only: find
-  use amr,  only : getOwner, neighbors, siblingCoords
+  use utils,      only: find
+  use amr,        only : getOwner, neighbors, siblingCoords
+  use clean_quit, only : clean_abort
+
   implicit none
 
   integer, intent(in) :: depth
@@ -330,6 +332,11 @@ subroutine normalBoundary (depth, uvars)
 
             srcID = neighs(1)
             call getOwner (srcID, srcOwner)
+            if (srcOwner == MPI_PROC_NULL) then
+              write(logu,'(a,i0,a,i0)') "Boundary: source block ", srcID, &
+                                        " not found for block ", destID
+              call clean_abort (ERROR_GENERIC)
+            end if
             call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
             call find (destID, localBlocks, nbMaxProc, destInd)
 
@@ -375,6 +382,11 @@ subroutine normalBoundary (depth, uvars)
 
             srcID = neighs(1)
             call getOwner (srcID, srcOwner)
+            if (srcOwner == MPI_PROC_NULL) then
+              write(logu,'(a,i0,a,i0)') "Boundary: source block ", srcID, &
+                                        " not found for block ", destID
+              call clean_abort (ERROR_GENERIC)
+            end if
             call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
             call find (destID, localBlocks, nbMaxProc, destInd)
 
@@ -501,6 +513,11 @@ subroutine normalBoundary (depth, uvars)
 
               srcID = neighs(b)
               call getOwner (srcID, srcOwner)
+              if (srcOwner == MPI_PROC_NULL) then
+                write(logu,'(a,i0,a,i0)') "Boundary: source block ", srcID,   &
+                                          " not found for block ", destID
+                call clean_abort (ERROR_GENERIC)
+              end if
 
               if (srcOwner.eq.rank) then
 
@@ -597,7 +614,7 @@ subroutine normalBoundary (depth, uvars)
 
             call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
             call find (destID, localBlocks, nbMaxProc, destInd)
-            
+
             ! For every ghost cell ...
             do i=i1,i2
               do j=j1,j2
