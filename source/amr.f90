@@ -283,7 +283,7 @@ end subroutine markByPhysical
 !> @details This requires the following steps:
 !! 1) Obtaining the bIDs of all the child blocks
 !! 2) Registering the children in the local block registry
-!! 3) Copying the father's data octants into the children's data spaces
+!! 3) Interpolating (limited linear) the father's data into the children
 !! 4) Unregistering the father from the local block registry
 !> @param bID The father block's (absolute) ID
 subroutine refineBlock (fatherID)
@@ -291,14 +291,19 @@ subroutine refineBlock (fatherID)
   use parameters
   use globals
   use clean_quit, only : clean_abort
+  use hydro_core, only : flow2prim, limited_slope
 
   implicit none
 
   integer, intent(in) :: fatherID
 
   integer :: ilev, nb, fatherIndex, childIndex, childID
-  integer :: c, i, j, k, ip, jp, kp, ieq, sx, sy, sz
+  integer :: c, i, j, k, ip, jp, kp, sx, sy, sz
+  integer :: ic, jc, kc, di, dj, dk, istat
   integer :: childList(8)
+  real    :: c0(neqtot), sl(neqtot,3), fv(neqtot)
+  logical :: ok
+
 
   ! TODO: THIS CHECK MIGHT BE ELIMINATED FOR EFFICIENCY
   call find (fatherID, localBlocks, nbMaxProc, fatherIndex)
@@ -357,19 +362,79 @@ subroutine refineBlock (fatherID)
     ! Copy father's data into child's data space (flow vars and prims)
     ! For each (i,j,k) cell of the child, (ip,jp,kp) is the corresponding
     ! cell on the father's data
-    do i=1,ncells_x
-      do j=1,ncells_y
-        do k=1,ncells_z
-          ip = (ncells_x/2)*sx + (i+1)/2   ! INT division
-          jp = (ncells_y/2)*sy + (j+1)/2   ! INT division
-          kp = (ncells_z/2)*sz + (k+1)/2   ! INT division
-          do ieq=1,neqtot
-            U(childIndex,ieq,i,j,k) = U(fatherIndex,ieq,ip,jp,kp)
-            PRIM(childIndex,ieq,i,j,k) = PRIM(fatherIndex,ieq,ip,jp,kp)
+    !do i=1,ncells_x
+    !  do j=1,ncells_y
+    !    do k=1,ncells_z
+    !      ip = (ncells_x/2)*sx + (i+1)/2   ! INT division
+    !      jp = (ncells_y/2)*sy + (j+1)/2   ! INT division
+    !      kp = (ncells_z/2)*sz + (k+1)/2   ! INT division
+    !      do ieq=1,neqtot
+    !        U(childIndex,ieq,i,j,k) = U(fatherIndex,ieq,ip,jp,kp)
+    !        PRIM(childIndex,ieq,i,j,k) = PRIM(fatherIndex,ieq,ip,jp,kp)
+    !      end do
+    !    end do
+    !  end do
+    !end do
+
+    ! Fill the child by limited linear interpolation of the father's data.
+    ! Each father cell (ip,jp,kp) gives the 2x2x2 child cells (i,j,k), whose
+    ! average equals the father value. Slopes use father neighbors inside the
+    ! block only (zero slope at the father's block edges, whose ghost cells
+    ! are one step old). If any of the 8 children fails flow2prim, all 8 get
+    ! the father value (injection), which keeps the refinement conservative.
+    do kc=1,ncells_z/2
+      do jc=1,ncells_y/2
+        do ic=1,ncells_x/2
+
+          ip = (ncells_x/2)*sx + ic
+          jp = (ncells_y/2)*sy + jc
+          kp = (ncells_z/2)*sz + kc
+          c0(:) = U(fatherIndex,:,ip,jp,kp)
+
+          sl(:,:) = 0.0
+          if ((ip > 1).and.(ip < ncells_x)) call limited_slope (               &
+              c0 - U(fatherIndex,:,ip-1,jp,kp), U(fatherIndex,:,ip+1,jp,kp) - c0, sl(:,1))
+          if ((jp > 1).and.(jp < ncells_y)) call limited_slope (               &
+              c0 - U(fatherIndex,:,ip,jp-1,kp), U(fatherIndex,:,ip,jp+1,kp) - c0, sl(:,2))
+          if ((kp > 1).and.(kp < ncells_z)) call limited_slope (               &
+              c0 - U(fatherIndex,:,ip,jp,kp-1), U(fatherIndex,:,ip,jp,kp+1) - c0, sl(:,3))
+
+          ok = .true.
+          do dk=0,1
+            do dj=0,1
+              do di=0,1
+                i = 2*ic - 1 + di
+                j = 2*jc - 1 + dj
+                k = 2*kc - 1 + dk
+                fv(:) = c0(:) + 0.5*(di-0.5)*sl(:,1) + 0.5*(dj-0.5)*sl(:,2)   &
+                              + 0.5*(dk-0.5)*sl(:,3)
+                U(childIndex,:,i,j,k) = fv(:)
+                call flow2prim (fv, PRIM(childIndex,:,i,j,k), istat)
+                if (istat /= 0) ok = .false.
+              end do
+            end do
           end do
+
+          ! Positivity safeguard: inject the father value into all 8 children
+          if (.not.ok) then
+            do dk=0,1
+              do dj=0,1
+                do di=0,1
+                  i = 2*ic - 1 + di
+                  j = 2*jc - 1 + dj
+                  k = 2*kc - 1 + dk
+                  U(childIndex,:,i,j,k)    = c0(:)
+                  PRIM(childIndex,:,i,j,k) = PRIM(fatherIndex,:,ip,jp,kp)
+                end do
+              end do
+            end do
+          end if
+
         end do
       end do
     end do
+
+
 
   end do
 
