@@ -45,10 +45,11 @@ subroutine Godunov (order)
   use parameters
   use globals
   use tictoc
-  use hydro_core, only : calcPrimsAll
-  use boundaries, only : boundary
-  use HLL,        only : HLLfluxes
-  use HLLC,       only : HLLCfluxes
+  use hydro_core,      only : calcPrimsAll
+  use boundaries,      only : boundary
+  use HLL,             only : HLLfluxes
+  use HLLC,            only : HLLCfluxes
+  use flux_correction, only : store_face_fluxes, apply_flux_correction
 #ifdef BFIELD
   use HLLE,       only : HLLEfluxes
   use HLLD,       only : HLLDfluxes
@@ -176,6 +177,9 @@ subroutine Godunov (order)
 
         end select
 
+        ! Store face fluxes at fine-coarse interfaces
+        if (enable_flux_correction) call store_face_fluxes (bIndx)
+
         ! Apply conservative formula
         call upwindStep (bIndx, dt)
 
@@ -183,6 +187,9 @@ subroutine Godunov (order)
 
       end if
     end do
+
+    ! Restore conservation at fine-coarse interfaces
+    if (enable_flux_correction) call apply_flux_correction ()
 
       if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount,    &
                                " blocks in ", &
