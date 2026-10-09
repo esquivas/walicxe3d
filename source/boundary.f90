@@ -94,10 +94,17 @@ subroutine normalBoundary (depth, uvars)
   real :: x_buf(neqtot, depth, ncells_y/2, ncells_z/2)
   real :: y_buf(neqtot, ncells_x/2, depth, ncells_z/2)
   real :: z_buf(neqtot, ncells_x/2, ncells_y/2, depth)
+  real, allocatable, save :: cbox(:,:,:,:), rbuf(:)
+
   ! Debugging flag
   logical, parameter :: verbose=.false.
 
   if (verbosity > 3) call tic(mark)
+
+  if (.not.allocated(cbox)) then
+    allocate( cbox(neqtot, ncells_x, ncells_y, ncells_z) )
+    allocate( rbuf(neqtot*2*max(ncells_x,ncells_y,ncells_z)**2) )
+  end if
 
   ! For all six directions, where direction indicates which ghost cell layer
   ! of the destination block if being set
@@ -202,10 +209,8 @@ subroutine normalBoundary (depth, uvars)
 
               ! Send one quarter of boundary layer through MPI
 
-              call opposite (direction, src_face)
-              depth1 = (depth+1)/2   ! INT division
               call siblingCoords (destID, sx, sy, sz)
-              call quadrantLimits (src_face, depth1, .false., sx, sy, sz, i1, i2, j1, j2, k1, k2)
+              call coarseBox (direction, sx, sy, sz, i1, i2, j1, j2, k1, k2)
               call find (srcID, localBlocks, nbMaxProc, srcInd)
 
               nData = (i2-i1+1)*(j2-j1+1)*(k2-k1+1)*neqtot
@@ -387,113 +392,27 @@ subroutine normalBoundary (depth, uvars)
                                         " not found for block ", destID
               call clean_abort (ERROR_GENERIC)
             end if
-            call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
+
             call find (destID, localBlocks, nbMaxProc, destInd)
+            call siblingCoords (destID, sx, sy, sz)
+            call coarseBox (direction, sx, sy, sz, i3, i4, j3, j4, k3, k4)
 
             if (srcOwner.eq.rank) then
-
-              ! LOCAL boundary; ghost cells are calculated with duplicated data
-
-              call siblingCoords (destID, sx, sy, sz)
+              ! LOCAL boundary: copy the needed coarse cells
               call find (srcID, localBlocks, nbMaxProc, srcInd)
-              do ieq=1,neqtot
-                do i=i1,i2
-                  do j=j1,j2
-                    do k=k1,k2
-                      ip = (i+1)/2 + sx*ncells_x/2
-                      jp = (j+1)/2 + sy*ncells_y/2
-                      kp = (k+1)/2 + sz*ncells_z/2
-                      select case (direction)
-                      case (LEFT)
-                        ip = ncells_x + (i+1)/2
-                      case (RIGHT)
-                        ip = (i-ncells_x+1)/2
-                      case (FRONT)
-                        jp = ncells_y + (j+1)/2
-                      case (BACK)
-                        jp = (j-ncells_y+1)/2
-                      case (BOTTOM)
-                        kp = ncells_z + (k+1)/2
-                      case (TOP)
-                        kp = (k-ncells_z+1)/2
-                      end select
-                      uvars(destInd, ieq, i, j, k) = uvars(srcInd, ieq, ip, jp, kp)
-                    end do
-                  end do
-                end do
-              end do
-
-              if (verbose) then
-                write(logu,'(1x,i8,a,i3,i3,i3,i3,i3,i3)') srcID, &
-                " is local too: multiplying SRC boundary layer into DEST ghost layer ", &
-                i1,i2,j1,j2,k1,k2
-              end if
-
+              cbox(:,i3:i4,j3:j4,k3:k4) = uvars(srcInd,:,i3:i4,j3:j4,k3:k4)
             else
-
-              ! NONLOCAL boundary; ghost cells received into buffer and duplicated
-
-              ! Receive a quadrant of boundary cells into appropriate buffer
-              depth1 = (depth+1)/2
-              select case (direction)
-              case (LEFT, RIGHT)
-                nData = neqtot*depth1*ncells_y/2*ncells_z/2
-                call MPI_RECV ( x_buf(1:neqtot, 1:depth1, 1:ncells_y/2, 1:ncells_z/2), &
-                  nData, mpi_real_kind, srcOwner, srcID, mpi_comm_world, mpistatus, ierr)
-              case (FRONT, BACK)
-                nData = neqtot*ncells_x/2*depth1*ncells_z/2
-                call MPI_RECV ( y_buf(1:neqtot, 1:ncells_x/2, 1:depth1, 1:ncells_z/2), &
-                  nData, mpi_real_kind, srcOwner, srcID, mpi_comm_world, mpistatus, ierr)
-              case (BOTTOM, TOP)
-                nData = neqtot*ncells_x/2*ncells_y/2*depth1
-                call MPI_RECV ( z_buf(1:neqtot, 1:ncells_x/2, 1:ncells_y/2, 1:depth1), &
-                  nData, mpi_real_kind, srcOwner, srcID, mpi_comm_world, mpistatus, ierr)
-              end select
-
-              ! Set ghost cells with duplicated data
-              call siblingCoords (destID, sx, sy, sz)
-              do ieq=1,neqtot
-                do i=i1,i2
-                  do j=j1,j2
-                    do k=k1,k2
-                      ip = (i+1)/2
-                      jp = (j+1)/2
-                      kp = (k+1)/2
-                      select case (direction)
-                      case (LEFT)
-                        ip = (2-i)/2
-                      case (RIGHT)
-                        ip = (i-ncells_x+1)/2
-                      case (FRONT)
-                        jp = (2-j)/2
-                      case (BACK)
-                        jp = (j-ncells_y+1)/2
-                      case (BOTTOM)
-                        kp = (2-k)/2
-                      case (TOP)
-                        kp = (k-ncells_z+1)/2
-                      end select
-                      select case (direction)
-                      case (LEFT, RIGHT)
-                        uvars(destInd, ieq, i, j, k) = x_buf(ieq, ip, jp, kp)
-                      case (FRONT, BACK)
-                        uvars(destInd, ieq, i, j, k) = y_buf(ieq, ip, jp, kp)
-                      case (BOTTOM, TOP)
-                        uvars(destInd, ieq, i, j, k) = z_buf(ieq, ip, jp, kp)
-                      end select
-                    end do
-                  end do
-                end do
-              end do
-
-              if (verbose) then
-                write(logu,'(1x,i8,a,i8,a,i6,a,i3,i3,i3,i3,i3,i3)') srcID, &
-                " is owned by rank ", srcOwner, " : receiving MPI data (", nData, &
-                " values) into buffer and duplicating into boundary layer ", &
-                i1,i2,j1,j2,k1,k2
-              end if
-
+              ! NONLOCAL boundary: receive the needed coarse cells
+              nData = (i4-i3+1)*(j4-j3+1)*(k4-k3+1)*neqtot
+              call MPI_RECV ( rbuf, nData, mpi_real_kind, srcOwner, srcID,     &
+                              mpi_comm_world, mpistatus, ierr)
+              cbox(:,i3:i4,j3:j4,k3:k4) = reshape( rbuf(1:nData),              &
+                                          [neqtot, i4-i3+1, j4-j3+1, k4-k3+1] )
             end if
+
+            ! Fill ghost cells by limited linear interpolation
+            call interpGhost (uvars, destInd, direction, depth, sx, sy, sz,   &
+                              cbox, i3, i4, j3, j4, k3, k4)
 
           end if
 
@@ -902,4 +821,178 @@ end subroutine opposite
 
 !===============================================================================
 
+!> @brief Box of coarse cells needed to fill the ghost cells of a fine block
+!! from its coarser neighbor (in coarse-block indices)
+!> @details Normal direction: the two coarse layers next to the shared face.
+!! Transverse directions: the quadrant facing the fine block extended by one
+!! cell on each side, clipped to the block.
+!> @param direction Ghost face of the fine (destination) block
+!> @param sx,sy,sz Sibling coordinates of the fine block
+subroutine coarseBox (direction, sx, sy, sz, i1, i2, j1, j2, k1, k2)
+
+  use parameters
+  implicit none
+
+  integer, intent(in)  :: direction, sx, sy, sz
+  integer, intent(out) :: i1, i2, j1, j2, k1, k2
+
+  integer :: hx, hy, hz
+
+  hx = ncells_x/2
+  hy = ncells_y/2
+  hz = ncells_z/2
+
+  ! Transverse: facing quadrant plus one cell on each side
+  i1 = max(1, sx*hx)
+  i2 = min(ncells_x, sx*hx + hx + 1)
+  j1 = max(1, sy*hy)
+  j2 = min(ncells_y, sy*hy + hy + 1)
+  k1 = max(1, sz*hz)
+  k2 = min(ncells_z, sz*hz + hz + 1)
+
+  ! Normal: the two coarse layers next to the shared face
+  select case (direction)
+  case (LEFT)
+    i1 = ncells_x-1 ; i2 = ncells_x
+  case (RIGHT)
+    i1 = 1          ; i2 = 2
+  case (FRONT)
+    j1 = ncells_y-1 ; j2 = ncells_y
+  case (BACK)
+    j1 = 1          ; j2 = 2
+  case (BOTTOM)
+    k1 = ncells_z-1 ; k2 = ncells_z
+  case (TOP)
+    k1 = 1          ; k2 = 2
+  end select
+
+end subroutine coarseBox
+
+!===============================================================================
+
+!> @brief Fills the ghost cells of a fine block from its coarser neighbor by
+!! limited linear interpolation
+!> @details Transverse slopes use the coarse neighbors in cbox (zero slope if
+!! a neighbor is outside the box). The normal slope uses the deeper coarse
+!! layer and the average of the 2x2x2 fine cells across the face. The 8 fine
+!! values of a coarse cell average back to it. If an interpolated state fails
+!! flow2prim (non-positive pressure/density) the coarse value is used.
+subroutine interpGhost (uvars, destInd, direction, depth, sx, sy, sz, cbox,  &
+                        ci1, ci2, cj1, cj2, ck1, ck2)
+
+  use parameters
+  use hydro_core, only : flow2prim, limited_slope
+  implicit none
+
+  real,    intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax,            &
+                                  nymin:nymax, nzmin:nzmax)
+  integer, intent(in)    :: destInd, direction, depth, sx, sy, sz
+  real,    intent(in)    :: cbox(neqtot, ncells_x, ncells_y, ncells_z)
+  integer, intent(in)    :: ci1, ci2, cj1, cj2, ck1, ck2
+
+  integer :: i, j, k, i1, i2, j1, j2, k1, k2, ip, jp, kp, istat
+  integer :: fi1, fj1, fk1
+  real    :: c(neqtot), favg(neqtot), sl(neqtot,3), off(3)
+  real    :: fv(neqtot), pv(neqtot)
+
+  call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
+
+  do k=k1,k2
+    do j=j1,j2
+      do i=i1,i2
+
+        ! Parent coarse cell (coarse-block indices)
+        ip = (i+1)/2 + sx*ncells_x/2
+        jp = (j+1)/2 + sy*ncells_y/2
+        kp = (k+1)/2 + sz*ncells_z/2
+
+        select case (direction)
+        case (LEFT)
+          ip = ncells_x + (i+1)/2
+        case (RIGHT)
+          ip = (i-ncells_x+1)/2
+        case (FRONT)
+          jp = ncells_y + (j+1)/2
+        case (BACK)
+          jp = (j-ncells_y+1)/2
+        case (BOTTOM)
+          kp = ncells_z + (k+1)/2
+        case (TOP)
+          kp = (k-ncells_z+1)/2
+        end select
+        c(:) = cbox(:,ip,jp,kp)
+
+        ! Fine-cell offset from the coarse-cell center (coarse units)
+        off(1) = merge(0.25, -0.25, mod(i,2) == 0)
+        off(2) = merge(0.25, -0.25, mod(j,2) == 0)
+        off(3) = merge(0.25, -0.25, mod(k,2) == 0)
+
+        ! 2x2x2 fine cells (destination block) across the face
+        fi1 = 2*((i+1)/2) - 1
+        fj1 = 2*((j+1)/2) - 1
+        fk1 = 2*((k+1)/2) - 1
+        select case (direction)
+        case (LEFT)
+          fi1 = 1
+        case (RIGHT)
+          fi1 = ncells_x-1
+        case (FRONT)
+          fj1 = 1
+        case (BACK)
+          fj1 = ncells_y-1
+        case (BOTTOM)
+          fk1 = 1
+        case (TOP)
+          fk1 = ncells_z-1
+        end select
+        favg(:) = sum(sum(sum(uvars(destInd,:,fi1:fi1+1,fj1:fj1+1,fk1:fk1+1),  &
+                  4),3),2) / 8.0
+
+        sl(:,:) = 0.0
+
+        ! x slope
+        if (direction == LEFT) then
+          call limited_slope(c - cbox(:,ip-1,jp,kp), favg - c ,sl(:,1) )
+        else if (direction == RIGHT) then
+          call limited_slope(c - favg, cbox(:,ip+1,jp,kp) - c, sl(:,1) )
+        else if ((ip > ci1).and.(ip < ci2)) then
+          call limited_slope(c - cbox(:,ip-1,jp,kp), cbox(:,ip+1,jp,kp) - c,   &
+                             sl(:,1) )
+        end if
+
+        ! y slope
+        if (direction == FRONT) then
+          call limited_slope(c - cbox(:,ip,jp-1,kp), favg - c, sl(:,2) )
+        else if (direction == BACK) then
+          call limited_slope(c - favg, cbox(:,ip,jp+1,kp) - c, sl(:,2) )
+        else if ((jp > cj1).and.(jp < cj2)) then
+          call limited_slope(c - cbox(:,ip,jp-1,kp), cbox(:,ip,jp+1,kp) - c,   &
+                             sl(:,2) )
+        end if
+
+        ! z slope
+        if (direction == BOTTOM) then
+          call limited_slope(c - cbox(:,ip,jp,kp-1), favg - c, sl(:,3) )
+        else if (direction == TOP) then
+          call limited_slope(c - favg, cbox(:,ip,jp,kp+1) - c, sl(:,3) )
+        else if ((kp > ck1).and.(kp < ck2)) then
+          call limited_slope(c - cbox(:,ip,jp,kp-1), cbox(:,ip,jp,kp+1) - c,   &
+          sl(:,3) )
+        end if
+
+        fv(:) = c(:) + off(1)*sl(:,1) + off(2)*sl(:,2) + off(3)*sl(:,3)
+
+        ! Positivity safeguard: fall back to the coarse value
+        call flow2prim (fv, pv, istat)
+        if (istat /= 0) fv(:) = c(:)
+
+        uvars(destInd,:,i,j,k) = fv(:)
+
+      end do
+    end do
+  end do
+
+end subroutine interpGhost
+
+!===============================================================================
 end module boundaries
