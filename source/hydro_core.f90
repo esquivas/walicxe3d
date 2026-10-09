@@ -639,72 +639,102 @@ subroutine limiter (pll,pl,pr,prr,lim,neqs)
     pr(ieq) = pr(ieq) - 0.5*ar
   end do
 
-contains
-
-  real function average (a,b,opt)
-
-    use constants
-    implicit none
-
-    real, intent(in) :: a, b
-    integer, intent(in) :: opt
-
-    real :: s, c, d, eps
-
-    select case (opt)
-
-    case (LIMITER_NO_AVERAGE)
-      average = 0.
-
-    case (LIMITER_NONE)
-      average = 0.5*(a+b)
-
-    case (LIMITER_VANLEER)
-      if (a*b.le.0.0) then
-        average = 0.0
-      else
-        average = a*b*(a+b)/(a*a+b*b)
-      end if
-
-    case (LIMITER_MINMOD)
-      s = sign(1.0,a)
-      average = s*max(0.0, min(abs(a), s*b))
-
-    case (LIMITER_ALBADA)
-      eps = 1.0e-7
-      average = (a*(b*b+eps)+b*(a*a+eps))/(a*a + b*b + 2.0*eps)
-      if (a*b < 0) average = 0.0
-
-    case (LIMITER_UMIST)
-      s = sign(1.0,a)
-      c = 0.25*a + 0.75*b
-      d = 0.75*a + 0.25*b
-      average = min(2.0*abs(a), 2.0*s*b, s*c, s*d)
-      average = s*max(0.0, average)
-
-    case (LIMITER_WOODWARD)
-      s = sign(1.0,a)
-      c = 0.5*(a+b)
-      average = min(2.0*abs(a), 2*s*b, s*c)
-      average = s*max(0.0, average)
-
-    case (LIMITER_SUPERBEE)
-      s = sign(1.0,b)
-      c = min(2.0*abs(b), s*a)
-      d = min(abs(b),2.0*s*a)
-      average = s*max(0.0,c,d)
-
-    case default
-      average = 0.0
-      write(*,'(a)') "WARNING: no averaging in limiter!"
-      write(*,'(a,i2)') "Passed limiter value: ", opt
-
-    end select
-
-  end function average
-
 end subroutine limiter
 
 !===============================================================================
 
+!> @brief Limited average of two differences (slope limiter)
+!> @details Used by the reconstruction (limiter) and by the AMR ghost-cell
+!! interpolation. See parameters.f90 for the supported options.
+!> @param a Left difference
+!> @param b Right difference
+!> @param opt Limiter to use
+real function average (a,b,opt)
+
+  use constants
+  implicit none
+
+  real, intent(in) :: a, b
+  integer, intent(in) :: opt
+
+  real :: s, c, d, eps
+
+  select case (opt)
+
+  case (LIMITER_NO_AVERAGE)
+    average = 0.
+
+  case (LIMITER_NONE)
+    average = 0.5*(a+b)
+
+  case (LIMITER_VANLEER)
+    if (a*b.le.0.0) then
+      average = 0.0
+    else
+      average = a*b*(a+b)/(a*a+b*b)
+    end if
+
+  case (LIMITER_MINMOD)
+    s = sign(1.0,a)
+    average = s*max(0.0, min(abs(a), s*b))
+
+  case (LIMITER_ALBADA)
+    eps = 1.0e-7
+    average = (a*(b*b+eps)+b*(a*a+eps))/(a*a + b*b + 2.0*eps)
+    if (a*b < 0) average = 0.0
+
+  case (LIMITER_UMIST)
+    s = sign(1.0,a)
+    c = 0.25*a + 0.75*b
+    d = 0.75*a + 0.25*b
+    average = min(2.0*abs(a), 2.0*s*b, s*c, s*d)
+    average = s*max(0.0, average)
+
+  case (LIMITER_WOODWARD)
+    s = sign(1.0,a)
+    c = 0.5*(a+b)
+    average = min(2.0*abs(a), 2*s*b, s*c)
+    average = s*max(0.0, average)
+
+  case (LIMITER_SUPERBEE)
+    s = sign(1.0,b)
+    c = min(2.0*abs(b), s*a)
+    d = min(abs(b),2.0*s*a)
+    average = s*max(0.0,c,d)
+
+  case default
+    average = 0.0
+    write(*,'(a)') "WARNING: no averaging in limiter!"
+    write(*,'(a,i2)') "Passed limiter value: ", opt
+
+  end select
+
+  end function average
+
+!===============================================================================
+
+!> @brief Limited slope for each equation, using the limiter set in
+!! parameters.f90 (limiter_type)
+!> @param dl Difference to the lower neighbor
+!> @param dr Difference to the upper neighbor
+!> @param slope Returned limited slope
+subroutine limited_slope (dl, dr, slope)
+
+  use parameters, only : neqtot, limiter_type
+  implicit none
+
+  real, intent(in)  :: dl(neqtot), dr(neqtot)
+  real, intent(out) :: slope(neqtot)
+
+  integer :: ieq
+
+  do ieq=1,neqtot
+    slope(ieq) = average(dl(ieq), dr(ieq), limiter_type)
+  end do
+
+end subroutine limited_slope
+
+!===============================================================================
+
 end module hydro_core
+
