@@ -216,7 +216,7 @@ subroutine HLLDfluxes (locIndx, order)
           call swapxz (prr)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
 #ifdef BFIELD
-          ! Normal field at this Z-face from the face-centred field (flux-CT)
+          ! Normal field at this Zrm -face from the face-centred field (flux-CT)
           if (enable_flux_ct) then
             pl(6) = BFP(locIndx,3,i,j,k)
             pr(6) = pl(6)
