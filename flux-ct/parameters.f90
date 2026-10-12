@@ -42,8 +42,8 @@ module parameters
   ! Execution parameters
   ! ============================================
 
-  real, parameter :: tfin  = 0.5      !< Final integration time (s)
-  real, parameter :: dtout = 0.05     !< Time between data dumps (s)
+  real, parameter :: tfin  = 2.0      !< Final integration time (s)
+  real, parameter :: dtout = 0.25     !< Time between data dumps (s)
 
   !> Perform warm start?
   logical, parameter :: dowarm = .false.
@@ -63,9 +63,9 @@ module parameters
   ! ============================================
 
   ! Simulation domain physical size (all in cgs)
-  real, parameter :: xphystot = 1.0       !< Physical domain size along x
-  real, parameter :: yphystot = 1.0       !< Physical domain size along y
-  real, parameter :: zphystot = 32./128.  !< Physical domain size along z
+  real, parameter :: xphystot = 2.0   !< Physical domain size along x
+  real, parameter :: yphystot = 1.0   !< Physical domain size along y
+  real, parameter :: zphystot = 0.5   !< Physical domain size along z
 
   ! Mesh Geometry
 
@@ -89,7 +89,7 @@ module parameters
   ! level
   ! > MUST BE POWERS OF TWO! <
   integer, parameter :: p_maxcells_x = 128
-  integer, parameter :: p_maxcells_y = 128
+  integer, parameter :: p_maxcells_y = 64
   integer, parameter :: p_maxcells_z = 32
 
   ! -- OR --
@@ -175,7 +175,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlld-fct-40p/output/"
+  character(*), parameter :: datadir = "./hlld-fct-loop-mc-r2/output/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -186,9 +186,9 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir  = "./hlld-fct-40p/logs/"!datadir
+  character(*), parameter :: logdir  = "./hlld-fct-loop-mc-r2/logs/"!datadir
   !> Directory to write conservation diagnostics
-  character(*), parameter :: diagdir = "./hlld-fct-40p/"
+  character(*), parameter :: diagdir = "./hlld-fct-loop-mc-r2/"
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -237,7 +237,7 @@ module parameters
   !!  LIMITER_UMIST: UMIST limiter
   !!  LIMITER_WOODWARD: Woodward limiter
   !!  LIMITER_SUPERBEE: Superbee limiter - least diffusive
-  integer, parameter :: limiter_type = LIMITER_MINMOD
+  integer, parameter :: limiter_type = LIMITER_WOODWARD
 
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
