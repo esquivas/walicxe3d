@@ -87,8 +87,8 @@ module userconds
   ! ============================================
   ! [1] Add HERE any aditional modules required by your simulation
 
-  use orzag_tang
-
+  !use orzag_tang
+  use field_loop
   ! ============================================
   implicit none
 
@@ -153,7 +153,8 @@ contains
     ! ============================================
 
     ! fill the domain with the OT setup
-    call impose_orzag_tang(uvars)
+    !call impose_orzag_tang(uvars)
+    call impose_field_loop(uvars)
 
     ! ============================================
 
