@@ -44,7 +44,9 @@ BFIELD  = Y
 # ==============================================================================
 
 # Additional USER modules to compile
-MODULES_USER= orzag-tang.o
+MODULES_USER= \
+orzag-tang.o \
+field_loop.o
 
 # Independently compilable modules in the MAIN CODE
 MODULES_MAIN= \
