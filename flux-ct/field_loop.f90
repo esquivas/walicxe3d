@@ -42,8 +42,16 @@ module field_loop
   real, parameter :: vz0  = 0.0       !< Advection velocity, z (3D variant)
   real, parameter :: A0   = 1.0e-3    !< Vector potential amplitude (= |B|)
   real, parameter :: R0   = 0.3       !< Loop radius
-  real, parameter :: xc = 0.25        !< Loop centre, x (box centre = 0)
-  real, parameter :: yc = 0.1         !< Loop centre, y
+  real, parameter :: xc   = 0.0       !< Loop centre, x (box centre = 0)
+  real, parameter :: yc   = 0.0       !< Loop centre, y
+
+  !> Static refinement at t=0: zone (physical units, origin at the box corner:
+  !! left, right, front, back, bottom, top) refined to level smr_level
+  logical, parameter :: smr          = .true.
+  logical, parameter :: smr_reimpose = .true.
+  integer, parameter :: smr_level = 2
+  real,    parameter :: zone_smr(6) = [0.7, 1.3, 0.2, 0.8, 0.0, 0.5]
+
 
 
 contains
@@ -52,7 +60,7 @@ contains
 
   !> @brief Imposes the field loop initial condition
   !> @param uvars Full flow variables array to be modified (U or UP)
-  subroutine impose_field_loop (uvars)
+  subroutine set_field_loop (uvars)
 
     use globals,    only : localBlocks, logu, BF, dx, dy
     use parameters, only : nbMaxProc, nxmin, nxmax, nymin, nymax, nzmin, nzmax,&
@@ -140,6 +148,27 @@ contains
       real, intent(in) :: xx, yy
       az = A0*max(R0 - sqrt(xx**2 + yy**2), 0.0)
     end function az
+
+  end subroutine set_field_loop
+
+  !=============================================================================
+
+  !> @brief Imposes the field loop IC, with optional static refinement
+  !> @details refineZone needs valid U (refineBlock interpolates it), so the
+  !! IC is imposed on the root mesh first, the zone refined, and the IC
+  !! imposed again analytically on the refined mesh.
+  subroutine impose_field_loop (uvars)
+
+    use parameters, only : nbMaxProc, nxmin, nxmax, nymin, nymax, nzmin, nzmax, neqtot
+    use amr,        only : refineZone
+    implicit none
+    real, intent(inout) :: uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+
+    call set_field_loop (uvars)
+    if (smr) then
+      call refineZone (zone_smr, smr_level)
+      if (smr_reimpose) call set_field_loop (uvars)
+    end if
 
   end subroutine impose_field_loop
 

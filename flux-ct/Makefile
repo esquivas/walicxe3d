@@ -79,6 +79,7 @@ boundary.o \
 flux_correction.o \
 lax.o \
 flux_ct.o \
+ghosts.o \
 hll.o \
 hllc.o \
 hlle.o \

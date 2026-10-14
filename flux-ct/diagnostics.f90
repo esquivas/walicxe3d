@@ -30,19 +30,20 @@ subroutine conservation_diagnostics ()
   use amr,        only : meshlevel
 #ifdef BFIELD
   use sources,    only : divergence_B
-  use flux_ct,    only : bf_shared_err
+  use flux_ct,    only : bf_shared_err, check_cf_faces, cf_face_err
 #endif
   implicit none
 
   ! 1:mass 2:passive 3-5:momentum 6:E 7-9:B 10:Emag 11:|divB|dx dV 12:|B| dV
   integer, parameter :: nsum = 12
   real    :: loc_sum(nsum), glob_sum(nsum), loc_max, glob_max,                 &
-             loc_mis, glob_mis, glob_shared
+             loc_mis, glob_mis, glob_shared, glob_cf
   integer :: loc_nlev(maxlev), glob_nlev(maxlev)
   integer :: nb, bID, lev, i, j, k, unitd
   real    :: dV, divB, bmag
   logical :: exists
   character(len=256) :: fname
+  real :: loc_zs(2), glob_zs(2)
 
   if (mod(it, diag_every) /= 0) return
 
@@ -50,6 +51,7 @@ subroutine conservation_diagnostics ()
   loc_max     = 0.0
   loc_mis     = 0.0
   loc_nlev(:) = 0
+  loc_zs(:)   = 0.0
 
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
@@ -72,8 +74,8 @@ subroutine conservation_diagnostics ()
             loc_sum(7:9) = loc_sum(7:9) + U(nb,6:8,i,j,k)*dV
             loc_sum(10)  = loc_sum(10)  + 0.5*bmag**2*dV
             if (enable_flux_ct) then
-              divB = ( BF(nb,1,i,j,k) - BF(nb,1,i-1,j,k) ) / dx(lev)          &
-                   + ( BF(nb,2,i,j,k) - BF(nb,2,i,j-1,k) ) / dy(lev)          &
+              divB = ( BF(nb,1,i,j,k) - BF(nb,1,i-1,j,k) ) / dx(lev)           &
+                   + ( BF(nb,2,i,j,k) - BF(nb,2,i,j-1,k) ) / dy(lev)           &
                    + ( BF(nb,3,i,j,k) - BF(nb,3,i,j,k-1) ) / dz(lev)
             else
               call divergence_B (nb, lev, i, j, k, divB)
@@ -82,11 +84,14 @@ subroutine conservation_diagnostics ()
             loc_sum(12)  = loc_sum(12)  + bmag*dV
             loc_max      = max( loc_max, abs(divB)*dx(lev) )
             if (enable_flux_ct) then
-              loc_mis = max( loc_mis,                                         &
-                abs(U(nb,6,i,j,k) - 0.5*(BF(nb,1,i-1,j,k) + BF(nb,1,i,j,k))), &
-                abs(U(nb,7,i,j,k) - 0.5*(BF(nb,2,i,j-1,k) + BF(nb,2,i,j,k))), &
+              loc_mis = max( loc_mis,                                          &
+                abs(U(nb,6,i,j,k) - 0.5*(BF(nb,1,i-1,j,k) + BF(nb,1,i,j,k))),  &
+                abs(U(nb,7,i,j,k) - 0.5*(BF(nb,2,i,j-1,k) + BF(nb,2,i,j,k))),  &
                 abs(U(nb,8,i,j,k) - 0.5*(BF(nb,3,i,j,k-1) + BF(nb,3,i,j,k))) )
             end if
+
+            loc_zs(1) = max( loc_zs(1), abs(U(nb,4,i,j,k)/U(nb,1,i,j,k)) )
+            loc_zs(2) = max( loc_zs(2), abs(U(nb,8,i,j,k)) )
 
 #endif
           end do
@@ -96,32 +101,43 @@ subroutine conservation_diagnostics ()
     end if
   end do
 
+  if (enable_flux_ct) call check_cf_faces ()
+
 #ifdef MPIP
-  call mpi_reduce (loc_sum, glob_sum, nsum, mpi_real_kind, mpi_sum, master,   &
+  call mpi_reduce (loc_sum, glob_sum, nsum, mpi_real_kind, mpi_sum, master,    &
                    mpi_comm_world, ierr)
-  call mpi_reduce (loc_max, glob_max, 1, mpi_real_kind, mpi_max, master,      &
+  call mpi_reduce (loc_max, glob_max, 1, mpi_real_kind, mpi_max, master,       &
                    mpi_comm_world, ierr)
-  call mpi_reduce (loc_nlev, glob_nlev, maxlev, mpi_integer, mpi_sum, master, &
+  call mpi_reduce (loc_nlev, glob_nlev, maxlev, mpi_integer, mpi_sum, master,  &
                    mpi_comm_world, ierr)
-  call mpi_reduce (loc_mis, glob_mis, 1, mpi_real_kind, mpi_max, master,      &
+  call mpi_reduce (loc_mis, glob_mis, 1, mpi_real_kind, mpi_max, master,       &
+                   mpi_comm_world, ierr)
+  call mpi_reduce (cf_face_err , glob_cf, 1, mpi_real_kind, mpi_max, master,   &
+                   mpi_comm_world, ierr)
+  call mpi_reduce (loc_zs, glob_zs, 2, mpi_real_kind, mpi_max, master,         &
                    mpi_comm_world, ierr)
 #else
   glob_sum  = loc_sum
   glob_max  = loc_max
   glob_nlev = loc_nlev
   glob_mis  = loc_mis
+  glob_cf   = cf_face_err
+  glob_zs   = loc_zs
 #endif
 
 #ifdef BFIELD
 #ifdef MPIP
-  call mpi_reduce (bf_shared_err, glob_shared, 1, mpi_real_kind, mpi_max,     &
+  call mpi_reduce (bf_shared_err, glob_shared, 1, mpi_real_kind, mpi_max,      &
                    master, mpi_comm_world, ierr)
 #else
   glob_shared = bf_shared_err
 #endif
-  if (enable_flux_ct .and. rank == master) write(logu,'(a,i8,2es12.4)')       &
-       " flux-CT: |B_cell-<B_face>|, shared-face diff at it ", it,            &
-       glob_mis, glob_shared
+  if (enable_flux_ct .and. rank == master) write(logu,'(a,i8,3es12.4)')        &
+       " flux-CT: |B_cell-<B_face>|, shared-face diff at it ", it,             &
+       glob_mis, glob_shared, glob_cf
+  if (rank == master) write(logu,'(a,i8,2es12.4)')                             &
+       " z-symmetry: max|vz|, max|Bz| at it ", it, glob_zs
+  bf_shared_err = 0.0
 #else
   glob_shared = 0.0
 #endif
