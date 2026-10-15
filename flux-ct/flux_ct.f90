@@ -723,6 +723,18 @@ subroutine boundary_bf (depth, bfield, uvars)
         call getOwner (srcID, srcOwner)
         call layerLimits (src_face,  depth, .false., i3, i4, j3, j4, k3, k4, edges=.true.)
         call layerLimits (direction, depth, .true.,  i1, i2, j1, j2, k1, k2, edges=.true.)
+        ! Also copy face index 0 of the transverse directions that layerLimits
+        ! does not extend over ghost cells (x pass: y and z; y pass: z). In the
+        ! ghost columns these are the neighbouring blocks' own low faces (normal
+        ! B), needed by the fluxes on the extra transverse layer; they are not
+        ! filled later when the transverse neighbour is at a level jump. The
+        ! tangential components copied there are overwritten by later passes.
+        if (axis == 1) then
+          j1 = j1 - 1 ; j3 = j3 - 1
+          k1 = k1 - 1 ; k3 = k3 - 1
+        else if (axis == 2) then
+          k1 = k1 - 1 ; k3 = k3 - 1
+        end if
         nData = 3*(i2-i1+1)*(j2-j1+1)*(k2-k1+1)
 
         ! Source side
