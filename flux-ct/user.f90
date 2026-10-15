@@ -188,9 +188,9 @@ contains
     ! both become true. The armed property is set to false automatically
     ! by the subroutine (but can be reset by the user, if he so wishes).
     ! Also note how we de-scale the time variable to physical units.
-
-
     ! ============================================
+    if (.false.) print*, uvars(1,1,1,1,1)  !  disable warning at compile when not in use
+
 
   end subroutine userBoundary
 
@@ -224,6 +224,8 @@ contains
     integer, intent(in   ) :: bID, locIndx, i, j, k
     real,    intent(inout) :: s(neqtot)
 
+    !  disable warning at compile when not in use
+    if  (.false.) print*, bID, locIndx, i, j, k, s(1)
 
   end subroutine get_user_source_terms
     ! ============================================

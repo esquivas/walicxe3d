@@ -53,9 +53,10 @@ subroutine Godunov (order)
 #ifdef BFIELD
   use HLLE,       only : HLLEfluxes
   use HLLD,       only : HLLDfluxes
-  use flux_ct, only : flux_ct_update, flux_ct_advance, boundary_bf,            &
+  use flux_ct,    only : flux_ct_update, flux_ct_advance, boundary_bf,         &
                       flux_ct_emf, sync_emf
 #endif
+
   implicit none
 
   integer, intent(in) :: order

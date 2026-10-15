@@ -80,6 +80,7 @@ subroutine admesh ()
     write(logu,'(1x,a)') "============================================"
     write(logu,*) ""
   end if
+
   ! Each process inspects its own active blocks and flags those that meet
   ! the physical criteria for refinement or coarsening
   if (verbosity > 2) write(logu,'(1x,a)')                                      &

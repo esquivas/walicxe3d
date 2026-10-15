@@ -49,7 +49,7 @@ module field_loop
   !! left, right, front, back, bottom, top) refined to level smr_level
   logical, parameter :: smr          = .true.
   logical, parameter :: smr_reimpose = .true.
-  integer, parameter :: smr_level = 2
+  integer, parameter :: smr_level = 3
   real,    parameter :: zone_smr(6) = [0.7, 1.3, 0.2, 0.8, 0.0, 0.5]
 
 
