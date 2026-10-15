@@ -113,17 +113,14 @@ module parameters
   ! and 2) having a lot of small blocks, which makes the AMR very efficient
   ! but increases the amount of communication.
   ! MUST be a power of two. A good value is 16.
-  integer, parameter :: ncells_block = 8
+  integer, parameter :: ncells_block = 32
 
   ! Refinement / Coarsening thresholds
   ! These are the maximum relative gradients required to mark a block for
   ! either refinement or coarsening. Note: refineThres must be larger than
   ! twice coarseThres. Good values are 0.3 and 0.03.
-  real, parameter :: refineThres = 0.1       !< Refinement threshold
-  real, parameter :: coarseThres = 0.01      !< Coarsening threshold
-  !> Also refine on (absolute) jumps of the first passive scalar
-  logical, parameter :: refine_passive = .true.
-
+  real, parameter :: refineThres = 1.0e30       !< Refinement threshold
+  real, parameter :: coarseThres = -1.0       !< Coarsening threshold
 
   ! ============================================
   ! Boundary conditions
@@ -178,7 +175,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlld-fct-loop-mc/output/"
+  character(*), parameter :: datadir = "./hlld-fct-loop-mc-r2/output/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -189,9 +186,9 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir  = "./hlld-fct-loop-mc/logs/"!datadir
+  character(*), parameter :: logdir  = "./hlld-fct-loop-mc-r2/logs/"!datadir
   !> Directory to write conservation diagnostics
-  character(*), parameter :: diagdir = "./hlld-fct-loop-mc/"
+  character(*), parameter :: diagdir = "./hlld-fct-loop-mc-r2/"
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -378,15 +375,11 @@ module parameters
     (ncells_block+2*nghost)**3 * neqtot * bytes_per_real
 
   !> Memory of all per-block-slot arrays, in units of block_ram_size:
-  !!  U, UP, PRIM                            : 3
-  !!  BF, BFP (flux-CT)                      : 2 x 3/neqtot
-  !!  EMF     (flux-CT, edge EMFs)           : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
-  !!  EW      (flux-CT, weights of edge EMFs : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
-  !!  faceflux (fine-coarse flux correction) : 6 n^2 / (n+2 nghost)^3
+  !!  U, UP, PRIM                         : 3
+  !!  BF, BFP (flux-CT)                   : 2 x 3/neqtot
+  !!  faceflux (fine-coarse flux correction): 6 n^2/(n+2 nghost)^3
   real, parameter :: block_arrays = 3.0                                        &
-       + merge(6.0/neqtot                                                      &
-               + 6.0*(ncells_block+1)**3                                       &
-                 /real((ncells_block+2*nghost)**3*neqtot), 0.0, enable_flux_ct) &
+       + merge(6.0/neqtot, 0.0, enable_flux_ct)                                &
        + merge(6.0*ncells_block**2/real((ncells_block+2*nghost)**3), 0.0,      &
                enable_flux_correction)
 

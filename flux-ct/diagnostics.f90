@@ -43,6 +43,7 @@ subroutine conservation_diagnostics ()
   real    :: dV, divB, bmag
   logical :: exists
   character(len=256) :: fname
+  real :: loc_zs(2), glob_zs(2)
 
   if (mod(it, diag_every) /= 0) return
 
@@ -50,6 +51,7 @@ subroutine conservation_diagnostics ()
   loc_max     = 0.0
   loc_mis     = 0.0
   loc_nlev(:) = 0
+  loc_zs(:)   = 0.0
 
   do nb=1,nbMaxProc
     bID = localBlocks(nb)
@@ -87,6 +89,10 @@ subroutine conservation_diagnostics ()
                 abs(U(nb,7,i,j,k) - 0.5*(BF(nb,2,i,j-1,k) + BF(nb,2,i,j,k))),  &
                 abs(U(nb,8,i,j,k) - 0.5*(BF(nb,3,i,j,k-1) + BF(nb,3,i,j,k))) )
             end if
+
+            loc_zs(1) = max( loc_zs(1), abs(U(nb,4,i,j,k)/U(nb,1,i,j,k)) )
+            loc_zs(2) = max( loc_zs(2), abs(U(nb,8,i,j,k)) )
+
 #endif
           end do
         end do
@@ -108,12 +114,15 @@ subroutine conservation_diagnostics ()
                    mpi_comm_world, ierr)
   call mpi_reduce (cf_face_err , glob_cf, 1, mpi_real_kind, mpi_max, master,   &
                    mpi_comm_world, ierr)
+  call mpi_reduce (loc_zs, glob_zs, 2, mpi_real_kind, mpi_max, master,         &
+                   mpi_comm_world, ierr)
 #else
   glob_sum  = loc_sum
   glob_max  = loc_max
   glob_nlev = loc_nlev
   glob_mis  = loc_mis
   glob_cf   = cf_face_err
+  glob_zs   = loc_zs
 #endif
 
 #ifdef BFIELD
@@ -126,6 +135,8 @@ subroutine conservation_diagnostics ()
   if (enable_flux_ct .and. rank == master) write(logu,'(a,i8,3es12.4)')        &
        " flux-CT: |B_cell-<B_face>|, shared-face diff at it ", it,             &
        glob_mis, glob_shared, glob_cf
+  if (rank == master) write(logu,'(a,i8,2es12.4)')                             &
+       " z-symmetry: max|vz|, max|Bz| at it ", it, glob_zs
   bf_shared_err = 0.0
 #else
   glob_shared = 0.0
