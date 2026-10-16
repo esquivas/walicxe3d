@@ -53,7 +53,10 @@ subroutine Godunov (order)
 #ifdef BFIELD
   use HLLE,       only : HLLEfluxes
   use HLLD,       only : HLLDfluxes
+  use flux_ct,    only : flux_ct_update, flux_ct_advance, boundary_bf,         &
+                      flux_ct_emf, sync_emf
 #endif
+
   implicit none
 
   integer, intent(in) :: order
@@ -78,6 +81,9 @@ subroutine Godunov (order)
       write(logu,'(1x,a)') "> Exchanging 1-deep boundary layers ..."
     end if
   call boundary (1, U)
+#ifdef BFIELD
+  if (enable_flux_ct) call boundary_bf (1, BF, U)
+#endif
   if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
   ! Update primitives in ghost cells
@@ -121,10 +127,29 @@ subroutine Godunov (order)
       ! Apply conservative formula
       call upwindStep (bIndx, dtp)
 
+#ifdef BFIELD
+      ! edge EMFs of this block
+      if (enable_flux_ct) call flux_ct_emf(bIndx)
+#endif
+
       bcount = bcount + 1
 
     end if
   end do
+
+#ifdef BFIELD
+  if (enable_flux_ct) then
+    call sync_emf ()
+    do bIndx=1,nbMaxProc
+      if (localBlocks(bIndx) /= -1) call flux_ct_update (bIndx, dtp)
+    end do
+  end if
+
+  ! First-order solvers have no second stage: accept the stepped faces now
+  if (enable_flux_ct .and. order == 1) call flux_ct_advance ()
+
+#endif
+
 
     if (verbosity > 3) write(logu,'(1x,a,i0,a,a)') "Integrated ", bcount,      &
                              " blocks in ", nicetoc(mark)
@@ -142,7 +167,9 @@ subroutine Godunov (order)
     end if
 
     call boundary (2, UP)
-
+#ifdef BFIELD
+    if (enable_flux_ct) call boundary_bf (1, BFP, UP)
+#endif
     if (verbosity > 3) write(logu,*) "Boundaries exchanged in", nicetoc(mark)
 
     ! Update primitives in ghost cells
@@ -183,10 +210,26 @@ subroutine Godunov (order)
         ! Apply conservative formula
         call upwindStep (bIndx, dt)
 
+#ifdef BFIELD
+        ! edge EMFs of this block
+        if (enable_flux_ct) call flux_ct_emf(bIndx)
+#endif
+
         bcount = bcount + 1
 
       end if
     end do
+
+#ifdef BFIELD
+        if (enable_flux_ct) then
+          call sync_emf ()
+          do bIndx=1,nbMaxProc
+            if (localBlocks(bIndx) /= -1) call flux_ct_update (bIndx, dt)
+          end do
+        end if
+    ! Accept the stepped face field: BF = BFP
+    if (enable_flux_ct) call flux_ct_advance ()
+#endif
 
     ! Restore conservation at fine-coarse interfaces
     if (enable_flux_correction) call apply_flux_correction ()

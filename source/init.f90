@@ -267,8 +267,12 @@ subroutine initmain ()
       write(logu,*) ""
       if (eight_wave)      &
       write(logu,'(1x,a)') "> div(B) constrained with 8 wave method'"
-      if (enable_flux_cd) &
-      write(logu,'(1x,a)') "> div(B) constrained with flux CD method'"
+      if (enable_flux_ct) &
+      write(logu,'(1x,a)') "> div(B) constrained with flux CT method'"
+      if (count([eight_wave, enable_flux_ct]) > 1) then
+        write(logu,'(a)') "Only one of eight_wave/enable_flux_ct can be enabled"
+        call clean_abort (ERROR_GENERIC)
+      end if
     else
       write(logu,*) ""
       write(logu,'(1x,a)') "> Passive magnetic field ENABLED"
@@ -434,6 +438,25 @@ subroutine initmain ()
     write(logu,*) "***ABORTING***"
     call clean_abort (ERROR_NOALLOC_BIGARR)
   end if
+
+#ifdef BFIELD
+  if (enable_flux_ct) then
+    allocate( BF (nbMaxProc, 3, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
+    if (istat.ne.0) then
+      write(logu,'(a)') "Couldn't allocate memory for BF array!"
+      write(logu,*) "***ABORTING***"
+      call clean_abort (ERROR_NOALLOC_BIGARR)
+    end if
+    BF(:,:,:,:,:) = 0.0
+    allocate( BFP(nbMaxProc, 3, nxmin:nxmax, nymin:nymax, nzmin:nzmax), stat=istat)
+    if (istat.ne.0) then
+      write(logu,'(a)') "Couldn't allocate memory for BFP array!"
+      write(logu,*) "***ABORTING***"
+      call clean_abort (ERROR_NOALLOC_BIGARR)
+    end if
+    BFP(:,:,:,:,:) = 0.0
+  end if
+#endif
 
   ! Allocate memory and initialize auxiliary data arrays
 
@@ -774,6 +797,21 @@ subroutine basegrid ()
      dy(ilev) = yphystot / (ncells_y * nbrooty * 2.0**(ilev-1)) / l_sc
      dz(ilev) = zphystot / (ncells_z * nbrootz * 2.0**(ilev-1)) / l_sc
   end do
+
+  ! Cells must be cubic (dx = dy = dz): the face-centred field (flux-CT), its
+  ! divergence-free prolongation (Toth & Roe) and several AMR routines assume
+  ! it. Blocks are cubic by construction (ncells_x = ncells_y = ncells_z).
+  ! Checking the root level suffices (all levels halve dx, dy, dz together).
+  if ( (abs(dy(1) - dx(1)) > 1.0e-10*dx(1)) .or.                               &
+       (abs(dz(1) - dx(1)) > 1.0e-10*dx(1)) ) then
+    write(logu,*)
+    write(logu,'(a)') "ERROR: the cells are not cubic (dx, dy, dz differ)!"
+    write(logu,'(a,3es14.6)') "Root-level dx, dy, dz (code units): ",          &
+                              dx(1), dy(1), dz(1)
+    write(logu,'(a)') "> In parameters.f90, make xphystot:yphystot:zphystot"// &
+                      " equal the ratio of cells along x:y:z"
+    call clean_abort (ERROR_BASEGRID_BAD_ASPECT)
+  end if
 
   ! Calculate total number of blocks per level
   allocate( nblockslev(maxlev) )

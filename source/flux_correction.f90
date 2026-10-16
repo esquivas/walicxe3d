@@ -180,6 +180,10 @@ subroutine apply_flux_correction ()
               ib = ob + c
               ! (coarse flux) - (averaged fine flux)
               dF(:) = faceflux(:,ia,ib,dir,destInd) - buf(:,a,c)
+#ifdef BFIELD
+              ! With flux-CD, B is updated from E, not from the face fluxes
+              if (enable_flux_ct) dF(6:8) = 0.0
+#endif
               select case (dir)
               case (LEFT)
                 UP(destInd,:,1,ia,ib) = UP(destInd,:,1,ia,ib) - dtdl*dF(:)

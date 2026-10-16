@@ -11,15 +11,16 @@ PROGRAM= Walicxe3D
 COMPILER= ifort
 #COMPILER= gfortran
 
-
 #  Search Path for Makefile, object files are searched in the order below
 VPATH = . : ../source
 
 # Additional user compiler flags
+
 ## ifort-compatible flags
 #USER_FLAGS= -O2 -warn nounused -nogen-interfaces
-#USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces
-USER_FLAGS= -O3 -cpp -g -traceback -check bounds -warn all
+#USER_FLAGS= -traceback -warn all -check all,noarg_temp_created -nogen-interfaces -fpe0 -g
+USER_FLAGS= -O3 -g -traceback -check bounds -warn all -nogen-interfaces
+
 ## gfortran-compatible flags
 #USER_FLAGS= -Wall -pedantic -fbounds-check -g -fbacktrace
 #USER_FLAGS= -g -fbacktrace
@@ -35,36 +36,37 @@ USER_FLAGS= -O3 -cpp -g -traceback -check bounds -warn all
 MPI= Y
 
 # Use double precision for all real variables?
-DOUBLEP = Y
+DOUBLEP= Y
 
 # Enable passive magnetic (passive *or* active)
-BFIELD = N
+BFIELD  = N
 
 # ==============================================================================
 
 # Additional USER modules to compile
-MODULES_USER= \
+MODULES_USER= 
 
 # Independently compilable modules in the MAIN CODE
 MODULES_MAIN= \
 constants.o \
 parameters.o \
 globals.o \
-
-# Dependent source files and modules in the MAIN CODE
-OBJECTS_MAIN= \
 tictoc.o \
 clean_quit.o \
 hydro_core.o \
 utils.o \
 hilbert.o \
-amr.o \
+amr.o
+
+# Dependent source files and modules in the MAIN CODE
+OBJECTS_MAIN= \
 loadbalance.o \
 uniformISM.o  \
 snr.o \
 winds.o \
 orbits.o \
 user.o \
+rad-transfer.o \
 hrate.o \
 cooling_h.o \
 cooling_schure.o \
@@ -72,7 +74,10 @@ cooling.o \
 init.o \
 output.o \
 boundary.o \
+flux_correction.o \
 lax.o \
+flux_ct.o \
+ghosts.o \
 hll.o \
 hllc.o \
 hlle.o \
@@ -80,8 +85,8 @@ hlld.o \
 sources.o \
 godunov.o \
 hydro_solver.o \
-report.o  \
 diagnostics.o \
+report.o  \
 main.o
 
 # List of modules and objects to compile the Column Density facility
@@ -111,10 +116,10 @@ endif
 ifeq ($(DOUBLEP),Y)
 CFLAGS += -DDOUBLEP
 ifeq ($(COMPILER),ifort)
-CFLAGS += -r8
+CFLAGS += -r8 -Difort
 endif
 ifeq ($(COMPILER),gfortran)
-CFLAGS += -fdefault-real-8
+CFLAGS += -fdefault-real-8 -Dgfortran
 endif
 endif
 
@@ -135,6 +140,7 @@ OBJECTS_ALL = ${MODULES_MAIN} ${MODULES_USER} ${OBJECTS_MAIN}
 
 $(PROGRAM) : prebuild ${OBJECTS_ALL}
 	@echo Linking object files ...
+	@echo Linking flags used: $(LINKFLAGS)
 	@$(COMPILER) $(CFLAGS) $(OBJECTS_ALL) -o $@
 	@echo Cleaning up ...
 	@rm -f *.o *.mod
@@ -156,7 +162,7 @@ extract : prebuild $(OBJECTS_EXTRACT)
 
 prebuild :
 	@echo "Walicxe3D build started `date`"
-
+	@echo Compiling flags used: $(CFLAGS)
 %.o : %.f90
 	@echo Compiling $^ ...
 	@$(COMPILER) $(CFLAGS) -c $^ -o $@
@@ -165,7 +171,7 @@ clean :
 	rm -f $(PROGRAM) *.o *.mod
 
 cleanall :
-	rm -f *.o *.mod
+	rm -f *.o *.mod *.out *.err
 	rm -f $(PROGRAM)
 	rm -f $(PROGRAM).*
 	rm -f coldens

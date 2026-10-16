@@ -127,6 +127,8 @@ module parameters
   ! twice coarseThres. Good values are 0.3 and 0.03.
   real, parameter :: refineThres = 0.3           !< Refinement threshold
   real, parameter :: coarseThres = 0.03          !< Coarsening threshold
+  !> Also refine on (absolute) jumps of the first passive scalar
+  logical, parameter :: refine_passive = .false.
 
   ! ============================================
   ! Boundary conditions
@@ -216,8 +218,10 @@ module parameters
   logical,  parameter :: mhd = .false.
   !>  If MHD enabled the divergence cleaning schemes are the following:
   !      1) Include terms proportional to DIV B (powell et al. 1999)
-  logical, parameter :: eight_wave = .false.
-  !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
+    logical, parameter :: eight_wave = .false.
+  !>     2) Enable field-CT cleaning of div B (more expensive, but recommended)
+  logical, parameter :: enable_flux_ct = .false.
+
   logical, parameter :: enable_flux_cd = .false.
 
   !> Numerical Integrator
@@ -227,6 +231,9 @@ module parameters
   !!  SOLVER_HLL: Full (second-order) HLL Riemann solver
   !!  SOLVER_HLLC: HLLC Riemann solver (second-order)
   integer, parameter :: solver_type = SOLVER_HLLC
+
+  !> Enable flux correction at fine-coarse interfaces
+  logical, parameter :: enable_flux_correction = .true.
 
   !> Slope Limiter (to be used with the HLL/HLLC solvers)
   !! Currently recognized options:
@@ -284,6 +291,13 @@ module parameters
   !> Filename with table of cooling coefficients
   ! Some cooling tables are provided in the cooling/ subdirectory.
   character(*), parameter :: cooling_file =  "../tables/coolingSKKKV.dat"
+
+  !============================================
+  ! Ionizing Radiation transfer
+  !============================================
+
+  !>  Enable radiation transfer module
+  logical, parameter :: rad_transfer = .false.
 
   !> Maximum *fractional* thermal energy loss allowed in a single cell
   !! per timestep.
@@ -351,9 +365,11 @@ module parameters
   integer, parameter :: neqmhd = 0
 #endif
 
-  !> Passive scalar index used for metallicity
-  ! Only applicable for COOL_TABLE_METAL cooling
-  integer, parameter :: metalpas = neqhydro + neqmhd + min(npassive,1)
+  !> Named passive scalars
+  ! metalpas: applicable for COOL_TABLE_METAL cooling
+  ! nH0     : applicable for EOS_H_RATE
+  ! TauRT   : applicable for rad_transfer
+  integer   :: metalpas, TauRT, inH0
 
   !> Total number of equations to integrate
   !! (hydro variables + mhd variables + passive scalars)
@@ -373,12 +389,22 @@ module parameters
   integer, parameter :: block_ram_size = &
     (ncells_block+2*nghost)**3 * neqtot * bytes_per_real
 
+  !> Memory of all per-block-slot arrays, in units of block_ram_size:
+  !!  U, UP, PRIM                            : 3
+  !!  BF, BFP (flux-CT)                      : 2 x 3/neqtot
+  !!  EMF     (flux-CT, edge EMFs)           : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
+  !!  EW      (flux-CT, weights of edge EMFs): 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
+  !!  faceflux (fine-coarse flux correction) : 6 n^2 / (n+2 nghost)^3
+  real, parameter :: block_arrays = 3.0                                        &
+       + merge(6.0/neqtot                                                      &
+               + 6.0*(ncells_block+1)**3                                       &
+                 /real((ncells_block+2*nghost)**3*neqtot), 0.0, enable_flux_ct) &
+       + merge(6.0*ncells_block**2/real((ncells_block+2*nghost)**3), 0.0,      &
+               enable_flux_correction)
+
   !> Maximum number of blocks per process
-  ! Computed automatically from the amount of RAM per process and the
-  ! memory size of each block. The fudge factor in the formula below
-  ! leaves a bit of headroom for the code.
-  integer, parameter :: nbMaxProc = &
-    int((RAM_per_proc*1024*1024 - 6*block_ram_size)*0.95/(block_ram_size*3))
+  integer, parameter :: nbMaxProc = int((RAM_per_proc*1024*1024 &
+                        - 6*block_ram_size)*0.95/(block_ram_size*block_arrays))
 
   !> Maximum number of blocks across all process
   integer, parameter :: nbMaxGlobal = nbMaxProc*nProcs

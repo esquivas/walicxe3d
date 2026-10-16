@@ -37,8 +37,9 @@ program Walicxe3D
   use tictoc,        only : tic, nicetoc, stamp       ! Time-measuring library
   use clean_quit,    only  : deinit
   use init
-  use hydro_core,    only : updatePrims
-  use amr,           only : admesh
+  use hydro_core,    only : updatePrims, calcPrimsAll
+  use amr,           only : admesh, refresh_ghosts
+  use ghosts,        only : refresh_ghosts_all
   use load_balance,  only : loadBalance
   use output,        only : writeOutput
   use hydro_solver,  only : hydroSolver
@@ -46,7 +47,7 @@ program Walicxe3D
   use report,        only : main_report
   use hrate,         only : updateNeutralFraction
   use radTransfer,   only : DoRadTransfer
-  use diagnostics,   only : conservation_diagnostics
+  use diagnostics,   only : conservation_diagnostics, test_edge_ghosts
 
   implicit none    ! ALWAYS mandatory
 
@@ -57,6 +58,9 @@ program Walicxe3D
 
   ! Initialize global arrays and variables
   call initmain ()
+
+  ! Ghost-refresh hook for refineZone (amr cannot use boundaries/flux_ct)
+  refresh_ghosts => refresh_ghosts_all
 
   ! Initialize base grid, and refine it (cold start)
   call basegrid ()
@@ -140,9 +144,6 @@ program Walicxe3D
     ! Radiative cooling
     call cooling ()
 
-    ! Conservation diagnostics
-    if (enable_cons_diagnostics) call conservation_diagnostics ()
-
    ! Data output (if scheduled)
     if (dumpout) then
       if (rad_transfer) call DoRadTransfer ()
@@ -150,6 +151,12 @@ program Walicxe3D
       nextout = nextout + 1
       dumpout = .false. ! until next time
     end if
+
+    ! Set one layer boundaries, needed to add slope at coarse-fine interfaces
+    call refresh_ghosts_all ()
+
+    ! Conservation diagnostics
+    if (enable_cons_diagnostics) call conservation_diagnostics ()
 
     ! Update AMR grid
     call admesh ()

@@ -176,7 +176,8 @@ subroutine normalBoundary (depth, uvars)
               ! Send full boundary through MPI
 
               call opposite  (direction, src_face)
-              call layerLimits (src_face, depth, .false., i1, i2, j1, j2, k1, k2)
+              call layerLimits (src_face, depth, .false., i1, i2, j1, j2,      &
+                                k1, k2, edges=.true.)
               call find (srcID, localBlocks, nbMaxProc, srcInd)
 
               nData = neqtot*(i2-i1+1)*(j2-j1+1)*(k2-k1+1)
@@ -247,7 +248,8 @@ subroutine normalBoundary (depth, uvars)
 
                 call opposite (direction, src_face)
                 depth1 = depth*2
-                call layerLimits (src_face, depth1, .false., i1, i2, j1, j2, k1, k2)
+                call layerLimits (src_face, depth1, .false., i1, i2, j1, j2, &
+                                  k1, k2)
                 call find (srcID, localBlocks, nbMaxProc, srcInd)
 
                 select case (direction)
@@ -342,7 +344,8 @@ subroutine normalBoundary (depth, uvars)
                                         " not found for block ", destID
               call clean_abort (ERROR_GENERIC)
             end if
-            call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
+            call layerLimits (direction, depth, .true., i1, i2, j1, j2, &
+                              k1, k2, edges=.true.)
             call find (destID, localBlocks, nbMaxProc, destInd)
 
             if (srcOwner.eq.rank) then
@@ -350,7 +353,8 @@ subroutine normalBoundary (depth, uvars)
               ! LOCAL boundary; ghost cells are copied one-to-one
 
               call opposite (direction, src_face)
-              call layerLimits (src_face, depth, .false., i3, i4, j3, j4, k3, k4)
+              call layerLimits (src_face, depth, .false., i3, i4, j3, j4, &
+                                k3, k4, edges=.true.)
               call find (srcID, localBlocks, nbMaxProc, srcInd)
               uvars(destInd, 1:neqtot, i1:i2, j1:j2, k1:k2) = &
               uvars(srcInd,  1:neqtot, i3:i4, j3:j4, k3:k4)
@@ -414,6 +418,9 @@ subroutine normalBoundary (depth, uvars)
             call interpGhost (uvars, destInd, direction, depth, sx, sy, sz,   &
                               cbox, i3, i4, j3, j4, k3, k4)
 
+            ! edge/corner ghost cells next to the level jump
+            call extrapolate_edges (uvars, destInd, direction, depth)
+
           end if
 
           ! =================================
@@ -445,7 +452,8 @@ subroutine normalBoundary (depth, uvars)
                 call siblingCoords (srcID, sx, sy, sz)
                 call opposite (direction, src_face)
                 depth1 = depth*2
-                call layerLimits (src_face, depth1, .false., i3, i4, j3, j4, k3, k4)
+                call layerLimits (src_face, depth1, .false., i3, i4, j3, j4,   &
+                                  k3, k4)
                 call find (srcID, localBlocks, nbMaxProc, srcInd)
 
                 do ieq=1,neqtot
@@ -501,6 +509,9 @@ subroutine normalBoundary (depth, uvars)
 
             end do
 
+            ! edge/corner ghost cells next to the level jump
+            call extrapolate_edges (uvars, destInd, direction, depth)
+
           end if
 
           ! =================================
@@ -531,7 +542,8 @@ subroutine normalBoundary (depth, uvars)
 
             if (verbose) write(logu,'(1x,a)') "Computional domain boundary: calculating locally"
 
-            call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2)
+            call layerLimits (direction, depth, .true., i1, i2, j1, j2,        &
+                              k1, k2, edges=.true.)
             call find (destID, localBlocks, nbMaxProc, destInd)
 
             ! For every ghost cell ...
@@ -567,6 +579,14 @@ subroutine normalBoundary (depth, uvars)
                         uvars(destInd,3,i,j,k) = -1.0 * uvars(destInd,3,ip,jp,kp)
                       else if (((direction.eq.BOTTOM).or.(direction.eq.TOP)).and.(ieq.eq.4)) then
                         uvars(destInd,4,i,j,k) = -1.0 * uvars(destInd,4,ip,jp,kp)
+#ifdef BFIELD
+                      else if (((direction.eq.LEFT).or.(direction.eq.RIGHT)).and.(ieq.eq.6)) then
+                        uvars(destInd,6,i,j,k) = -1.0 * uvars(destInd,6,ip,jp,kp)
+                      else if (((direction.eq.FRONT).or.(direction.eq.BACK)).and.(ieq.eq.7)) then
+                        uvars(destInd,7,i,j,k) = -1.0 * uvars(destInd,7,ip,jp,kp)
+                      else if (((direction.eq.BOTTOM).or.(direction.eq.TOP)).and.(ieq.eq.8)) then
+                        uvars(destInd,8,i,j,k) = -1.0 * uvars(destInd,8,ip,jp,kp)
+#endif
                       else
                         uvars(destInd,ieq,i,j,k) = uvars(destInd,ieq,ip,jp,kp)
                       end if
@@ -582,15 +602,15 @@ subroutine normalBoundary (depth, uvars)
                     case (LEFT)
                       ip = 1
                     case (RIGHT)
-                      ip = 2*ncells_x - i + 1
+                      ip = ncells_x  !2*ncells_x - i + 1
                     case (FRONT)
                       jp = 1
                     case (BACK)
-                      jp = 2*ncells_y - j + 1
+                      jp = ncells_y  !2*ncells_y - j + 1
                     case (BOTTOM)
                       kp = 1
                     case (TOP)
-                      kp = 2.*ncells_z - k + 1
+                      kp = ncells_z  !2*ncells_z - k + 1
                     end select
 
                     uvars(destInd,:,i,j,k) = uvars(destInd,:,ip,jp,kp)
@@ -624,6 +644,14 @@ end subroutine normalBoundary
 !===============================================================================
 
 !> @brief Computes the limits (min/max i-j-k values) of boundary or ghost cell layers
+!> @details By default the layer spans the physical range (1:ncells) in the
+!! two directions transverse to the face. If edges=.true., the transverse
+!! range is extended by depth cells over the ghost cells of the directions
+!! exchanged earlier in normalBoundary (x before y before z): for y-faces
+!! (FRONT/BACK) it includes the x ghost cells, and for z-faces (BOTTOM/TOP)
+!! the x and y ghost cells. Exchanging these extended layers in that order
+!! fills the edge and corner ghost cells without diagonal messages. Only
+!! valid between same-level blocks or at non-periodic domain boundaries.
 !> @param face The face the layer is on
 !> @param depth The number of boundary cell layers
 !> @param ghost Are these limits meant for ghost cells?
@@ -633,7 +661,12 @@ end subroutine normalBoundary
 !> @param jmax The maximum j-value
 !> @param kmin The minimum k-value
 !> @param kmax The maximum k-value
-subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax)
+!> @param edges (optional) Extend the transverse range over the ghost cells
+!! of previously exchanged directions, to fill edge and corner ghost cells
+!! (default .false.)
+
+subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax,&
+                         edges)
 
   use parameters
   implicit none
@@ -642,6 +675,7 @@ subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax)
   integer, intent(in) :: depth
   logical, intent(in) :: ghost
   integer, intent(out) :: imin, imax, jmin, jmax, kmin, kmax
+  logical, intent(in), optional :: edges
 
   ! Set full range initially ...
   imin = 1
@@ -694,6 +728,23 @@ subroutine layerLimits (face, depth, ghost, imin, imax, jmin, jmax, kmin, kmax)
       ! Should abort execution
     end select
   end if
+
+  ! Optionally extend the transverse range over the ghost cells of the
+  ! directions exchanged earlier (x before y before z), so that edge and
+  ! corner ghost cells get filled. Only valid between same-level blocks.
+  if (present(edges)) then
+    if (edges) then
+      select case (face)
+      case (FRONT, BACK)
+        imin = 1 - depth ; imax = ncells_x + depth
+      case (BOTTOM, TOP)
+        imin = 1 - depth ; imax = ncells_x + depth
+        jmin = 1 - depth ; jmax = ncells_y + depth
+      end select
+    end if
+  end if
+
+
 
   return
 
@@ -993,6 +1044,59 @@ subroutine interpGhost (uvars, destInd, direction, depth, sx, sy, sz, cbox,  &
   end do
 
 end subroutine interpGhost
+
+!===============================================================================
+
+!> @brief Fills the edge/corner part of a ghost layer next to a level jump
+!> @details The face part of the layer (transverse indices 1:n) is set by the
+!! coarser/finer exchange. The edge part (transverse ghost indices of the
+!! directions exchanged earlier) is copied from the block's own adjacent
+!! layer (zero gradient across the edge). Approximate, but the EMF
+!! synchronisation removes any mismatch this causes between blocks.
+!> @param uvars Flow variables (U or UP)
+!> @param destInd Local index of the block
+!> @param direction Ghost face being filled
+!> @param depth Number of ghost layers
+subroutine extrapolate_edges (uvars, destInd, direction, depth)
+
+  use parameters
+  implicit none
+
+  real,    intent(inout) :: &
+                 uvars(nbMaxProc, neqtot, nxmin:nxmax, nymin:nymax, nzmin:nzmax)
+  integer, intent(in)    :: destInd, direction, depth
+
+  integer :: i1, i2, j1, j2, k1, k2, i, j, k, l
+
+  call layerLimits (direction, depth, .true., i1, i2, j1, j2, k1, k2, edges=.true.)
+
+  select case (direction)
+  case (FRONT, BACK)
+    l = merge(1, ncells_y, direction == FRONT)
+    do k=k1,k2
+      do j=j1,j2
+        do i=i1,i2
+          if ((i < 1).or.(i > ncells_x)) uvars(destInd,:,i,j,k) =              &
+                                                          uvars(destInd,:,i,l,k)
+        end do
+      end do
+    end do
+  case (BOTTOM, TOP)
+    l = merge(1, ncells_z, direction == BOTTOM)
+    do k=k1,k2
+      do j=j1,j2
+        do i=i1,i2
+          if ((i < 1).or.(i > ncells_x).or.(j < 1).or.(j > ncells_y))          &
+            uvars(destInd,:,i,j,k) = uvars(destInd,:,i,j,l)
+        end do
+      end do
+    end do
+  case default
+    ! x faces are exchanged first: their layers have no edge part
+  end select
+
+end subroutine extrapolate_edges
+
 
 !===============================================================================
 end module boundaries

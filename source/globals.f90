@@ -99,6 +99,12 @@ module globals
   real, allocatable :: UP(:,:,:,:,:)      !< Stepped flow variables
   real, allocatable :: PRIM(:,:,:,:,:)    !< Primitives
 
+  !> Face-centred magnetic field (flux-CT), same indexing as the fluxes:
+  !! BF(:,1,i,j,k) = Bx at x-face i+1/2, BF(:,2,i,j,k) = By at j+1/2,
+  !! BF(:,3,i,j,k) = Bz at k+1/2. U(:,6:8,...) holds the cell averages.
+  real, allocatable :: BF (:,:,:,:,:)
+  real, allocatable :: BFP(:,:,:,:,:)     !< Stepped face-centred field
+
   ! Auxiliary data arrays
   real, allocatable :: FC (:,:,:,:)     !< Numerical flux along x
   real, allocatable :: GC (:,:,:,:)     !< Numerical flux along y

@@ -61,9 +61,12 @@ subroutine HLLDfluxes (locIndx, order)
   integer, intent(in) :: locIndx
   integer, intent(in) :: order
 
-  integer :: i, j, k
+  integer :: i, j, k, e
   real :: pl(neqtot), pr(neqtot), pll(neqtot), prr(neqtot), ff(neqtot)
   !logical :: valid
+
+  e=0
+  if (enable_flux_ct) e = 1
 
   ! First-order method
   select case (order)
@@ -72,13 +75,20 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (1)   ! First-order
 
-    do k=1,ncells_z
-      do j=1,ncells_y
+    do k=1-e,ncells_z+e
+      do j=1-e,ncells_y+e
         do i=0,ncells_x
 
           ! X dimension
           pl(:) = PRIM(locIndx,:,i,j,k)
           pr(:) = PRIM(locIndx,:,i+1,j,k)
+#ifdef BFIELD
+          ! Normal field at this x-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pL(6) = BF(locIndx,1,i,j,k)
+            pR(6) = pL(6)
+          end if
+#endif
           call primfhlld (pL, pR, ff)
           FC(:,i,j,k) = ff(:)
 
@@ -86,15 +96,22 @@ subroutine HLLDfluxes (locIndx, order)
       end do
     end do
 
-    do k=1,ncells_z
+    do k=1-e,ncells_z+e
       do j=0,ncells_y
-        do i=1,ncells_x
+        do i=1-e,ncells_x+e
 
           ! Y dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j+1,k)
           call swapxy (pL)
           call swapxy (pR)
+#ifdef BFIELD
+          ! Normal field at this Y-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pL(6) = BF(locIndx,2,i,j,k)
+            pR(6) = pL(6)
+          end if
+#endif
           call primfhlld (pL, pR, ff)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
@@ -104,14 +121,21 @@ subroutine HLLDfluxes (locIndx, order)
     end do
 
     do k=0,ncells_z
-      do j=1,ncells_y
-        do i=1,ncells_x
+      do j=1-e,ncells_y+e
+        do i=1-e,ncells_x+e
 
           ! Z dimension
           pL(:) = PRIM(locIndx,:,i,j,k)
           pR(:) = PRIM(locIndx,:,i,j,k+1)
           call swapxz (pL)
           call swapxz (pR)
+#ifdef BFIELD
+          ! Normal field at this Z-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pL(6) = BF(locIndx,3,i,j,k)
+            pR(6) = pL(6)
+          end if
+#endif
           call primfhlld (pL, pR, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)
@@ -124,8 +148,8 @@ subroutine HLLDfluxes (locIndx, order)
 
   case (2)  ! Second-order - requires limiter
 
-    do k=1,ncells_z
-      do j=1,ncells_y
+    do k=1-e,ncells_z+e
+      do j=1-e,ncells_y+e
         do i=0,ncells_x
 
           ! X dimension
@@ -134,6 +158,13 @@ subroutine HLLDfluxes (locIndx, order)
           pr(:)  = PRIM(locIndx,:,i+1,j,k)
           prr(:) = PRIM(locIndx,:,i+2,j,k)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+#ifdef BFIELD
+          ! Normal field at this X-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pl(6) = BFP(locIndx,1,i,j,k)
+            pr(6) = pl(6)
+          end if
+#endif
           call primfhlld (pl, pr, ff)
           FC(:,i,j,k) = ff(:)
 
@@ -141,9 +172,9 @@ subroutine HLLDfluxes (locIndx, order)
       end do
     end do
 
-    do k=1,ncells_z
+    do k=1-e,ncells_z+e
       do j=0,ncells_y
-        do i=1,ncells_x
+        do i=1-e,ncells_x+e
 
           ! Y dimension
           pll(:) = PRIM(locIndx,:,i,j-1,k)
@@ -155,6 +186,13 @@ subroutine HLLDfluxes (locIndx, order)
           call swapxy (pr)
           call swapxy (prr)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+#ifdef BFIELD
+          ! Normal field at this Y-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pl(6) = BFP(locIndx,2,i,j,k)
+            pr(6) = pl(6)
+          end if
+#endif
           call primfhlld (pl, pr, ff)
           call swapxy (ff)
           GC(:,i,j,k) = ff(:)
@@ -164,8 +202,8 @@ subroutine HLLDfluxes (locIndx, order)
     end do
 
     do k=0,ncells_z
-      do j=1,ncells_y
-        do i=1,ncells_x
+      do j=1-e,ncells_y+e
+        do i=1-e,ncells_x+e
 
           ! Z dimension
           pll(:) = PRIM(locIndx,:,i,j,k-1)
@@ -177,6 +215,13 @@ subroutine HLLDfluxes (locIndx, order)
           call swapxz (pr)
           call swapxz (prr)
           call limiter (pll,pl,pr,prr,limiter_type,neqtot)
+#ifdef BFIELD
+          ! Normal field at this Z-face from the face-centred field (flux-CT)
+          if (enable_flux_ct) then
+            pl(6) = BFP(locIndx,3,i,j,k)
+            pr(6) = pl(6)
+          end if
+#endif
           call primfhlld (pl, pr, ff)
           call swapxz (ff)
           HC(:,i,j,k) = ff(:)

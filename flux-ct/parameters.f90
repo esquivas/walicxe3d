@@ -178,7 +178,7 @@ module parameters
   ! the output number. A file extension will be appended automatically
   ! depending on the selected format and should not be given here.
   !> Path to data directory
-  character(*), parameter :: datadir = "./hlld-fct-loop-mc/output/"
+  character(*), parameter :: datadir = "./hlld-fct-loop-mc-r7m/output/"
   !> Filename template for Blocks data files
   character(*), parameter :: blockstpl = "BlocksXXX.YYYY"
   !> Filename template for Grid data files
@@ -189,9 +189,9 @@ module parameters
   !> Send everything output to stdout to a logfile?
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
-  character(*), parameter :: logdir  = "./hlld-fct-loop-mc/logs/"!datadir
+  character(*), parameter :: logdir  = "./hlld-fct-loop-mc-r7m/logs/"!datadir
   !> Directory to write conservation diagnostics
-  character(*), parameter :: diagdir = "./hlld-fct-loop-mc/"
+  character(*), parameter :: diagdir = "./hlld-fct-loop-mc-r7m/"
 
   !> Set verbosity level
   !!   level 0 : Almost Null Only error messages and crucial warnings
@@ -381,7 +381,7 @@ module parameters
   !!  U, UP, PRIM                            : 3
   !!  BF, BFP (flux-CT)                      : 2 x 3/neqtot
   !!  EMF     (flux-CT, edge EMFs)           : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
-  !!  EW      (flux-CT, weights of edge EMFs : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
+  !!  EW      (flux-CT, weights of edge EMFs): 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
   !!  faceflux (fine-coarse flux correction) : 6 n^2 / (n+2 nghost)^3
   real, parameter :: block_arrays = 3.0                                        &
        + merge(6.0/neqtot                                                      &
