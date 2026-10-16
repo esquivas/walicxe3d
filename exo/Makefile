@@ -73,7 +73,10 @@ cooling.o \
 init.o \
 output.o \
 boundary.o \
+flux_correction.o \
 lax.o \
+flux_ct.o \
+ghosts.o \
 hll.o \
 hllc.o \
 hlle.o \
@@ -81,8 +84,8 @@ hlld.o \
 sources.o \
 godunov.o \
 hydro_solver.o \
-report.o  \
 diagnostics.o \
+report.o  \
 main.o
 
 # List of modules and objects to compile the Column Density facility

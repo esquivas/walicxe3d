@@ -190,6 +190,8 @@ module parameters
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
   character(*), parameter :: logdir  = "./hlld-fct-loop-mc-r7m/logs/"!datadir
+
+  !> Run conservation diagnostics
   !> Directory to write conservation diagnostics
   character(*), parameter :: diagdir = "./hlld-fct-loop-mc-r7m/"
 

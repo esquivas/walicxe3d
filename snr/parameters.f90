@@ -222,8 +222,6 @@ module parameters
   !>     2) Enable field-CT cleaning of div B (more expensive, but recommended)
   logical, parameter :: enable_flux_ct = .false.
 
-  logical, parameter :: enable_flux_cd = .false.
-
   !> Numerical Integrator
   !! Currently recognized options:
   !!  SOLVER_LAX: First order Lax-Friedrichs scheme (for testing)

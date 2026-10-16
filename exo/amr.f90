@@ -33,6 +33,21 @@ module amr
 
   implicit none
 
+  !! The following is a solution to refresh the ghost cells and faces avoiding a
+  !! circular dependency (need to call boundaries that is later in the Makefile)
+
+  !> Interface of the ghost-refresh hook
+  abstract interface
+    subroutine ghost_refresher ()
+    end subroutine ghost_refresher
+  end interface
+
+  !> Refreshes one layer of ghost cells/faces (and primitives) of all local
+  !! blocks. Set by the main program (ghosts module): amr cannot use
+  !! boundaries or flux_ct directly, since they depend on amr. If not set,
+  !! refineZone works without refreshing (as before).
+  procedure(ghost_refresher), pointer :: refresh_ghosts => null()
+
 contains
 
 !===============================================================================
@@ -54,6 +69,8 @@ subroutine admesh ()
   integer :: mark
   logical :: test(nbMaxGlobal)  ! DEBUG
   logical :: debug = .false.
+  integer :: nf
+  integer, allocatable :: fathers(:)
 
   if (verbosity > 3) call tic(mark)
   if (verbosity > 1) then
@@ -63,6 +80,7 @@ subroutine admesh ()
     write(logu,'(1x,a)') "============================================"
     write(logu,*) ""
   end if
+
   ! Each process inspects its own active blocks and flags those that meet
   ! the physical criteria for refinement or coarsening
   if (verbosity > 2) write(logu,'(1x,a)')                                      &
@@ -105,6 +123,11 @@ subroutine admesh ()
   if (verbosity > 2) write(logu,'(1x,a)') "> Checking proximity criterion ..."
   call checkProximity (maxlev-1)
 
+  ! Blocks about to be refined (needed by the face-field fix-up)
+  nf = count(refineFlags == FLAG_REFINE)
+  allocate (fathers(nf))
+  fathers = pack(globalBlocks, refineFlags == FLAG_REFINE)
+
   ! Refine local blocks marked for refinement
   if (verbosity > 2) write(logu,'(1x,a)') "> Refining local blocks ..."
   do nb=nbmin,nbmax
@@ -118,6 +141,11 @@ subroutine admesh ()
 
   ! Update global block list
   call syncBlockLists ()
+
+#ifdef BFIELD
+  if (enable_flux_ct) call fix_new_faces (fathers, nf)
+#endif
+  deallocate (fathers)
 
   ! Do block coarsening
   if (verbosity > 2) write(logu,'(1x,a)') "> Coarsening block families ..."
@@ -194,11 +222,11 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! Pressure gradient check
 
         gradx = abs(PRIM(locIndx,5,i+1,j,k)-PRIM(locIndx,5,i-1,j,k)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  ! relative change
         grady = abs(PRIM(locIndx,5,i,j+1,k)-PRIM(locIndx,5,i,j-1,k)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  ! relative change
         gradz = abs(PRIM(locIndx,5,i,j,k+1)-PRIM(locIndx,5,i,j,k-1)) / &
-                PRIM(locIndx,5,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,5,i,j,k) / 2.0  ! relative change
         grad = max( gradx, grady, gradz )
         !   DEBUG ##############################################################
         !grad = 0.
@@ -225,11 +253,11 @@ subroutine markByPhysical (locIndx, bID, flag)
         ! Density gradient check
 
         gradx = abs(PRIM(locIndx,1,i+1,j,k)-PRIM(locIndx,1,i-1,j,k)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  ! relative change
         grady = abs(PRIM(locIndx,1,i,j+1,k)-PRIM(locIndx,1,i,j-1,k)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  ! relative change
         gradz = abs(PRIM(locIndx,1,i,j,k+1)-PRIM(locIndx,1,i,j,k-1)) / &
-                PRIM(locIndx,1,i,j,k) / (2*dx(ilev))
+                PRIM(locIndx,1,i,j,k) / 2.0  ! relative change
         grad = max( gradx, grady, gradz )
         maxgrad = max( maxgrad, grad )
 
@@ -314,7 +342,7 @@ end subroutine markByPhysical
 !> @details This requires the following steps:
 !! 1) Obtaining the bIDs of all the child blocks
 !! 2) Registering the children in the local block registry
-!! 3) Copying the father's data octants into the children's data spaces
+!! 3) Interpolating (limited linear) the father's data into the children
 !! 4) Unregistering the father from the local block registry
 !> @param bID The father block's (absolute) ID
 subroutine refineBlock (fatherID)
@@ -322,21 +350,28 @@ subroutine refineBlock (fatherID)
   use parameters
   use globals
   use clean_quit, only : clean_abort
+  use hydro_core, only : flow2prim, limited_slope, calcPrimsBlock
 
   implicit none
 
   integer, intent(in) :: fatherID
 
   integer :: ilev, nb, fatherIndex, childIndex, childID
-  integer :: c, i, j, k, ip, jp, kp, ieq, sx, sy, sz
+  integer :: c, i, j, k, ip, jp, kp, sx, sy, sz
+  integer :: ic, jc, kc, di, dj, dk, istat
   integer :: childList(8)
+#ifdef BFIELD
+  integer :: badcells
+#endif
+  real    :: c0(neqtot), sl(neqtot,3), fv(neqtot)
+  logical :: ok
+
 
   ! TODO: THIS CHECK MIGHT BE ELIMINATED FOR EFFICIENCY
   call find (fatherID, localBlocks, nbMaxProc, fatherIndex)
   if (fatherIndex.eq.-1) then
       write(logu,*) ""
-      write(logu,'(a,i5,a)') "Block ", fatherID, &
-      " is not a local block; can't refine it!"
+      write(logu,'(a,i5,a)') "Block ", fatherID, " is not a local block; can't refine it!"
       write(logu,'(1x,a)') "***ABORTING***"
     call clean_abort (ERROR_LOCAL_BID_NOT_FOUND)
   end if
@@ -346,8 +381,7 @@ subroutine refineBlock (fatherID)
   call meshlevel(fatherID, ilev)
   if (ilev.eq.maxlev) then
     write(logu,*) ""
-    write(logu,'(a,i5,a)') "Trying to refine block ", fatherID, &
-    " past max mesh level! Aborting!"
+    write(logu,'(a,i5,a)') "Trying to refine block ", fatherID, " past max mesh level! Aborting!"
     write(logu,'(a)') "***ABORTING***"
     call clean_abort (ERROR_ALREADY_MAX_LEV)
   end if
@@ -387,22 +421,75 @@ subroutine refineBlock (fatherID)
     ! Determine child's sibling coordinates (xs, ys, zs)
     call siblingCoords (childID, sx, sy, sz)
 
-    ! Copy father's data into child's data space (flow vars and prims)
-    ! For each (i,j,k) cell of the child, (ip,jp,kp) is the corresponding
-    ! cell on the father's data
-    do i=1,ncells_x
-      do j=1,ncells_y
-        do k=1,ncells_z
-          ip = (ncells_x/2)*sx + (i+1)/2   ! INT division
-          jp = (ncells_y/2)*sy + (j+1)/2   ! INT division
-          kp = (ncells_z/2)*sz + (k+1)/2   ! INT division
-          do ieq=1,neqtot
-            U(childIndex,ieq,i,j,k) = U(fatherIndex,ieq,ip,jp,kp)
-            PRIM(childIndex,ieq,i,j,k) = PRIM(fatherIndex,ieq,ip,jp,kp)
+    ! Fill the child by limited linear interpolation of the father's data.
+    ! Each father cell (ip,jp,kp) gives the 2x2x2 child cells (i,j,k), whose
+    ! average equals the father value. Slopes use father neighbors. including
+    ! its refreshed ghost cells (in main program).  If any of the 8 children
+    ! fails flow2prim, all 8 get the father value (injection), which keeps the
+    ! refinement conservative.
+    do kc=1,ncells_z/2
+      do jc=1,ncells_y/2
+        do ic=1,ncells_x/2
+
+          ip = (ncells_x/2)*sx + ic
+          jp = (ncells_y/2)*sy + jc
+          kp = (ncells_z/2)*sz + kc
+          c0(:) = U(fatherIndex,:,ip,jp,kp)
+
+          sl(:,:) = 0.0
+          call limited_slope ( c0 - U(fatherIndex,:,ip-1,jp,kp),               &
+                                    U(fatherIndex,:,ip+1,jp,kp) - c0, sl(:,1))
+          call limited_slope ( c0 - U(fatherIndex,:,ip,jp-1,kp),               &
+                                    U(fatherIndex,:,ip,jp+1,kp) - c0, sl(:,2))
+          call limited_slope ( c0 - U(fatherIndex,:,ip,jp,kp-1),               &
+                                    U(fatherIndex,:,ip,jp,kp+1) - c0, sl(:,3))
+
+          ok = .true.
+          do dk=0,1
+            do dj=0,1
+              do di=0,1
+                i = 2*ic - 1 + di
+                j = 2*jc - 1 + dj
+                k = 2*kc - 1 + dk
+                fv(:) = c0(:) + 0.5*(di-0.5)*sl(:,1) + 0.5*(dj-0.5)*sl(:,2)   &
+                              + 0.5*(dk-0.5)*sl(:,3)
+                U(childIndex,:,i,j,k) = fv(:)
+                call flow2prim (fv, PRIM(childIndex,:,i,j,k), istat)
+                if (istat /= 0) ok = .false.
+              end do
+            end do
           end do
+
+          ! Positivity safeguard: inject the father value into all 8 children
+          if (.not.ok) then
+            do dk=0,1
+              do dj=0,1
+                do di=0,1
+                  i = 2*ic - 1 + di
+                  j = 2*jc - 1 + dj
+                  k = 2*kc - 1 + dk
+                  U(childIndex,:,i,j,k)    = c0(:)
+                  PRIM(childIndex,:,i,j,k) = PRIM(fatherIndex,:,ip,jp,kp)
+                end do
+              end do
+            end do
+          end if
+#ifdef BFIELD
+          ! Divergence-free prolongation of the face field (Toth & Roe 2002)
+          if (enable_flux_ct) call prolong_cell_faces (fatherIndex, childIndex,&
+                                       ip, jp, kp, 2*ic-1, 2*jc-1, 2*kc-1)
+#endif
         end do
       end do
     end do
+
+#ifdef BFIELD
+    ! Cell-centred B from the prolonged faces, then primitives
+    if (enable_flux_ct) then
+      call faces_to_cells (childIndex)
+      call calcPrimsBlock (U, PRIM, childIndex, CELLS_PHYS, badcells)
+    end if
+#endif
 
   end do
 
@@ -503,48 +590,72 @@ subroutine neighborLevel(bID, dir, neighID)
 
   case (LEFT)
     if (x.eq.1) then
-      neighID = -1
-      return
+      if (bc_left.eq.BC_PERIODIC) then
+        xp = nx
+      else
+        neighID = -1
+        return
+      end if
     else
       xp = x-1
     end if
 
   case (RIGHT)
     if (x.eq.nx) then
-      neighID = -1
-      return
+      if (bc_right.eq.BC_PERIODIC) then
+        xp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       xp = x+1
     end if
 
   case (FRONT)
     if (y.eq.1) then
-      neighID = -1
-      return
+      if (bc_front.eq.BC_PERIODIC) then
+        yp = ny
+      else
+        neighID = -1
+        return
+      end if
     else
       yp = y-1
     end if
 
   case (BACK)
     if (y.eq.ny) then
-      neighID = -1
-      return
+      if (bc_back.eq.BC_PERIODIC) then
+        yp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       yp = y+1
     end if
 
   case (BOTTOM)
     if (z.eq.1) then
-      neighID = -1
-      return
+      if (bc_bottom.eq.BC_PERIODIC) then
+        zp = nz
+      else
+        neighID = -1
+        return
+      end if
     else
       zp = z-1
     end if
 
   case (TOP)
     if (z.eq.nz) then
-      neighID = -1
-      return
+      if (bc_top.eq.BC_PERIODIC) then
+        zp = 1
+      else
+        neighID = -1
+        return
+      end if
     else
       zp = z+1
     end if
@@ -1114,7 +1225,7 @@ end subroutine cellPos
 !===============================================================================
 
 !> @brief Returns the rank of the process who owns this bID
-!> @details Returns -1 if the bID is not in globalBlocks
+!> @details Returns MPI_PROC_NULL if the bID is not in globalBlocks
 !> @param bID The (absolute) block ID of the block
 !> @param process The block owner's rank
 subroutine getOwner (bID, owner)
@@ -1129,7 +1240,7 @@ subroutine getOwner (bID, owner)
   integer :: gIndx
 
   if (bID.eq.-1) then
-    owner = -1
+    owner = MPI_PROC_NULL
     return
   end if
 
@@ -1138,7 +1249,7 @@ subroutine getOwner (bID, owner)
   if (gIndx.ne.-1) then
     owner = (gIndx-1)/nbMaxProc
   else
-    owner = -1
+    owner = MPI_PROC_NULL
   end if
   return
 
@@ -1326,6 +1437,8 @@ subroutine refineZone (zone, z_level)
   integer :: localFlags(nbMaxProc)
   real :: z_left, z_right, z_front, z_back, z_bottom, z_top
   real :: b_left, b_right, b_back, b_front, b_bottom, b_top
+  integer :: nf
+  integer, allocatable :: fathers(:)
 
   ! Verbosity flag (for debugging, or if you're feeling lonely)
   logical, parameter  :: debug = .false.
@@ -1339,12 +1452,12 @@ subroutine refineZone (zone, z_level)
   end if
 
   ! Unpack zone bounding box
-  z_left = zone(1)
-  z_right = zone(2)
-  z_front = zone(3)
-  z_back = zone(4)
+  z_left   = zone(1)
+  z_right  = zone(2)
+  z_front  = zone(3)
+  z_back   = zone(4)
   z_bottom = zone(5)
-  z_top = zone(6)
+  z_top    = zone(6)
 
   if (verbosity > 2) then
     write(logu,*) ""
@@ -1366,6 +1479,10 @@ subroutine refineZone (zone, z_level)
         end if
       end do
     end if
+
+    ! One layer of fresh ghost cells and faces: refineBlock interpolates from
+    ! them, and the blocks created in the previous pass have none yet
+    if (associated(refresh_ghosts)) call refresh_ghosts ()
 
     ! Clear local refinement flags
     localFlags(:) = -1
@@ -1434,6 +1551,11 @@ subroutine refineZone (zone, z_level)
     if (verbosity > 2) write(logu,'(1x,a)') "Doing proximity checks ..."
     call checkProximity(ilev)
 
+    ! Blocks about to be refined (needed by the face-field fix-up)
+    nf = count(refineFlags == FLAG_REFINE)
+    allocate (fathers(nf))
+    fathers = pack(globalBlocks, refineFlags == FLAG_REFINE)
+
     if (debug) then
       write(logu,*) "         bID        owner        flag"
       do nb3=1,nbMaxGlobal
@@ -1457,6 +1579,11 @@ subroutine refineZone (zone, z_level)
 
     ! Update block registry
     call syncBlockLists ()
+
+#ifdef BFIELD
+    if (enable_flux_ct) call fix_new_faces (fathers, nf)
+#endif
+  deallocate (fathers)
 
     ! Do load balance
     call doBalance ()
@@ -1490,6 +1617,13 @@ subroutine coarseBlocks ()
   real :: buf(neqtot, ncells_x/2, ncells_y/2, ncells_z/2)
   logical, parameter :: debug = .false.
   logical :: counted
+  integer, parameter :: m3 = (ncells_x/2+1)*(ncells_x/2)**2
+#ifdef BFIELD
+  real :: fbuf(3*m3)
+  real :: r1(0:ncells_x/2,  ncells_y/2,    ncells_z/2)
+  real :: r2( ncells_x/2,  0:ncells_y/2,   ncells_z/2)
+  real :: r3( ncells_x/2,  ncells_y/2,   0:ncells_z/2)
+#endif
 
   ! 1. Build the list of families
 
@@ -1610,6 +1744,16 @@ subroutine coarseBlocks ()
           call MPI_SEND ( buf, nData, mpi_real_kind, elder_owner, sID, &
             mpi_comm_world, ierr)
           if (debug) write(logu,*) "Sent", nData, "values to process", elder_owner
+#ifdef BFIELD
+          if (enable_flux_ct) then
+            call restrict_child_faces (locIndx, r1, r2, r3)
+            fbuf(1:m3)          = reshape( r1, [m3] )
+            fbuf(m3+1:2*m3)     = reshape( r2, [m3] )
+            fbuf(2*m3+1:3*m3)   = reshape( r3, [m3] )
+            call MPI_SEND ( fbuf, 3*m3, mpi_real_kind, elder_owner, sID,       &
+            mpi_comm_world, ierr)
+          end if
+#endif
           ! Free this sibling's local slot
           call pop (sID, localBlocks, nbMaxProc, nb1)
 
@@ -1633,6 +1777,16 @@ subroutine coarseBlocks ()
           call MPI_RECV ( U(fatherIndex, 1:neqtot, i1:i2, j1:j2, k1:k2), nData, &
             mpi_real_kind, sib_owner, sID, mpi_comm_world, mpistatus, ierr)
           if (debug) write(logu,*) "Received", nData, "values into local space", i1,i2,j1,j2,k1,k2
+#ifdef BFIELD
+          if (enable_flux_ct) then
+            call MPI_RECV ( fbuf, 3*m3, mpi_real_kind, sib_owner, sID,         &
+                            mpi_comm_world, mpistatus, ierr)
+            r1 = reshape( fbuf(1:m3),        [ncells_x/2+1, ncells_x/2, ncells_x/2] )
+            r2 = reshape( fbuf(m3+1:2*m3),   [ncells_x/2, ncells_x/2+1, ncells_x/2] )
+            r3 = reshape( fbuf(2*m3+1:3*m3), [ncells_x/2, ncells_x/2, ncells_x/2+1] )
+            call put_child_faces (fatherIndex, sx, sy, sz, r1, r2, r3)
+          end if
+#endif
 
         ! ... or averages and copies it directly from local memory
         else if ((rank.eq.elder_owner).and.(rank.eq.sib_owner)) then
@@ -1672,6 +1826,12 @@ subroutine coarseBlocks ()
 
           if (debug) write(logu,*) "Averaged and copied local data"
 
+#ifdef BFIELD
+          if (enable_flux_ct) then
+            call restrict_child_faces (locIndx, r1, r2, r3)
+            call put_child_faces (fatherIndex, sx, sy, sz, r1, r2, r3)
+          end if
+#endif
           ! Free this sibling's local slot
           call pop (sID, localBlocks, nbMaxProc, nb1)
 
@@ -1684,6 +1844,15 @@ subroutine coarseBlocks ()
         end if
 
       end do
+
+      ! Calculate primitives on new father block
+      if (rank.eq.elder_owner) then
+#ifdef BFIELD
+        if (enable_flux_ct) call faces_to_cells (fatherIndex)
+#endif
+        call calcPrimsBlock (U, PRIM, fatherIndex, CELLS_PHYS, badcells)
+      end if
+
 
       ! Calculate primitives on new father block
       if (rank.eq.elder_owner) then
@@ -1907,6 +2076,13 @@ subroutine doBalance ()
         nData = neqtot*ncells_x*ncells_y*ncells_z
         call MPI_SEND( U(nbloc, 1:neqtot, 1:ncells_x, 1:ncells_y, 1:ncells_z), &
              nData, mpi_real_kind, new_owner, bID, mpi_comm_world, ierr)
+#ifdef BFIELD
+        if (enable_flux_ct) then
+          nData = 3*(ncells_x+1)*(ncells_y+1)*(ncells_z+1)
+          call MPI_SEND( BF(nbloc, 1:3, 0:ncells_x, 0:ncells_y, 0:ncells_z), &
+               nData, mpi_real_kind, new_owner, bID, mpi_comm_world, ierr)
+        end if
+#endif
         localBlocks(nbloc) = -1
 
         sent = sent + 1
@@ -1929,6 +2105,13 @@ subroutine doBalance ()
         nData = neqtot*ncells_x*ncells_y*ncells_z
         call MPI_RECV( U(nbloc, 1:neqtot, 1:ncells_x, 1:ncells_y, 1:ncells_z), &
              nData, mpi_real_kind, old_owner, bID, mpi_comm_world, mpistatus, ierr)
+#ifdef BFIELD
+        if (enable_flux_ct) then
+          nData = 3*(ncells_x+1)*(ncells_y+1)*(ncells_z+1)
+          call MPI_RECV( BF(nbloc, 1:3, 0:ncells_x, 0:ncells_y, 0:ncells_z), &
+               nData, mpi_real_kind, old_owner, bID, mpi_comm_world, mpistatus, ierr)
+        end if
+#endif
         localBlocks(nbloc) = bID
 
         ! Update primitives of received block
@@ -2107,6 +2290,515 @@ subroutine getHilbertKey (bID, hk)
   call HKey3(xp-1, yp-1, zp-1, order, hk)
 
 end subroutine getHilbertKey
+
+!===============================================================================
+
+!> @brief Divergence-free prolongation of the face field of one parent cell
+!! (Toth & Roe 2002, sect. 3.2), for cubic cells
+!> @details Exterior fine faces (eq. 4): parent face value plus limited
+!! transverse slopes (+-1/4 of a parent cell), so the four fine faces of a
+!! parent face average to it (eq. 3). Interior fine faces (eqs. 8-12): all
+!! eight fine cells get the parent's divergence. With dx=dy=dz all face areas
+!! are equal and the formulas hold for field values (the h^2 factors of the
+!! third-order terms cancel with the 2h^2 of eq. 12). The parent's ghost
+!! faces (depth 1) are used for the slopes at the block edges.
+!> @param fInd Local index of the parent block
+!> @param cInd Local index of the child block
+!> @param ip,jp,kp Parent cell (parent block indices)
+!> @param i0,j0,k0 Low fine cell of this parent cell in the child block
+subroutine prolong_cell_faces (fInd, cInd, ip, jp, kp, i0, j0, k0)
+
+  use parameters
+  use globals,    only : BF
+  use hydro_core, only : average
+  implicit none
+
+  integer, intent(in) :: fInd, cInd, ip, jp, kp, i0, j0, k0
+
+  ! Fine faces: fx(n,j,k) = u^{n,j,k}, fy(i,n,k) = v^{i,n,k}, fz(i,j,n) = w^{i,j,n}
+  ! with n = 0,1,2 for T&R -2,0,+2 and transverse 0,1 for -1,+1
+  real    :: fx(0:2,0:1,0:1), fy(0:1,0:2,0:1), fz(0:1,0:1,0:2)
+  real    :: bc, s1, s2
+  integer :: a, b, c, l
+
+  ! --- Exterior faces (eq. 4); a = 0: low parent face, a = 2: high parent face
+  do a=0,2,2
+    l = a/2 - 1                ! parent face index offset: -1 (low) or 0 (high)
+
+    ! x-faces: u = U + (j Uy + k Uz)/4
+    bc = BF(fInd,1,ip+l,jp,kp)
+    s1 = average( bc - BF(fInd,1,ip+l,jp-1,kp), BF(fInd,1,ip+l,jp+1,kp) - bc, limiter_type )
+    s2 = average( bc - BF(fInd,1,ip+l,jp,kp-1), BF(fInd,1,ip+l,jp,kp+1) - bc, limiter_type )
+    do c=0,1
+      do b=0,1
+        fx(a,b,c) = bc + 0.25*( (2*b-1)*s1 + (2*c-1)*s2 )
+      end do
+    end do
+
+    ! y-faces: v = V + (i Vx + k Vz)/4
+    bc = BF(fInd,2,ip,jp+l,kp)
+    s1 = average( bc - BF(fInd,2,ip-1,jp+l,kp), BF(fInd,2,ip+1,jp+l,kp) - bc, limiter_type )
+    s2 = average( bc - BF(fInd,2,ip,jp+l,kp-1), BF(fInd,2,ip,jp+l,kp+1) - bc, limiter_type )
+    do c=0,1
+      do b=0,1
+        fy(b,a,c) = bc + 0.25*( (2*b-1)*s1 + (2*c-1)*s2 )
+      end do
+    end do
+
+    ! z-faces: w = W + (i Wx + j Wy)/4
+    bc = BF(fInd,3,ip,jp,kp+l)
+    s1 = average( bc - BF(fInd,3,ip-1,jp,kp+l), BF(fInd,3,ip+1,jp,kp+l) - bc, limiter_type )
+    s2 = average( bc - BF(fInd,3,ip,jp-1,kp+l), BF(fInd,3,ip,jp+1,kp+l) - bc, limiter_type )
+    do c=0,1
+      do b=0,1
+        fz(b,c,a) = bc + 0.25*( (2*b-1)*s1 + (2*c-1)*s2 )
+      end do
+    end do
+  end do
+
+  call tr_interior(fx, fy, fz)
+
+  ! --- Store in the child block (face index i = face i+1/2)
+  do c=0,1
+    do b=0,1
+      do a=0,2
+        BF(cInd,1,i0-1+a,j0+b,k0+c) = fx(a,b,c)
+        BF(cInd,2,i0+b,j0-1+a,k0+c) = fy(b,a,c)
+        BF(cInd,3,i0+b,j0+c,k0-1+a) = fz(b,c,a)
+      end do
+    end do
+  end do
+
+end subroutine prolong_cell_faces
+
+!===============================================================================
+
+!> @brief Interior fine faces of one parent cell from its 24 exterior fine
+!! faces (Toth & Roe 2002, eqs. 8-12, cubic cells)
+!> @param fx,fy,fz Fine faces as in prolong_cell_faces; on input the exterior
+!! ones (n = 0, 2), on output also the interior ones (n = 1)
+subroutine tr_interior (fx, fy, fz)
+
+  implicit none
+
+  real, intent(inout) :: fx(0:2,0:1,0:1), fy(0:1,0:2,0:1), fz(0:1,0:1,0:2)
+
+  real    :: t1, t2, si, sj, sk, uu, vv, ww
+  real    :: uxx, vyy, wzz, uxyz, vxyz, wxyz
+  integer :: b, c, ii, jj, kk
+
+  ! --- Second and third derivatives (eqs. 11, 12 and cyclic permutations)
+  uxx = 0.0 ; vyy = 0.0 ; wzz = 0.0 ; uxyz = 0.0 ; vxyz = 0.0 ; wxyz = 0.0
+
+  do kk=0,1
+    do jj=0,1
+      do ii=0,1
+        si = real(2*ii-1)
+        sj = real(2*jj-1)
+        sk = real(2*kk-1)
+        uu = fx(2*ii, jj, kk)          ! u^{2i,j,k}
+        vv = fy(ii, 2*jj, kk)          ! v^{i,2j,k}
+        ww = fz(ii, jj, 2*kk)          ! w^{i,j,2k}
+        uxx  = uxx  + si*sj*vv + si*sk*ww
+        vyy  = vyy  + sj*sk*ww + sj*si*uu
+        wzz  = wzz  + sk*si*uu + sk*sj*vv
+        uxyz = uxyz + si*sj*sk*uu
+        vxyz = vxyz + si*sj*sk*vv
+        wxyz = wxyz + si*sj*sk*ww
+      end do
+    end do
+  end do
+  uxx  = 0.125*uxx
+  vyy  = 0.125*vyy
+  wzz  = 0.125*wzz
+  uxyz = 0.0625*uxyz           ! = (dy^2) * U_xyz of eq. 12, for cubic cells
+  vxyz = 0.0625*vxyz
+  wxyz = 0.0625*wxyz
+
+  ! --- Interior faces (eqs. 8-10); t1, t2 = signs of the two transverse indices
+  do c=0,1
+    do b=0,1
+      t1 = real(2*b-1)
+      t2 = real(2*c-1)
+      ! u^{0,j,k}: j = t1, k = t2
+      fx(1,b,c) = 0.5*(fx(2,b,c) + fx(0,b,c)) + uxx + t2*vxyz + t1*wxyz
+      ! v^{i,0,k}: i = t1, k = t2
+      fy(b,1,c) = 0.5*(fy(b,2,c) + fy(b,0,c)) + vyy + t1*wxyz + t2*uxyz
+      ! w^{i,j,0}: i = t1, j = t2
+      fz(b,c,1) = 0.5*(fz(b,c,2) + fz(b,c,0)) + wzz + t2*uxyz + t1*vxyz
+    end do
+  end do
+
+end subroutine tr_interior
+
+!===============================================================================
+
+!> @brief Recomputes the 12 interior fine faces of one parent cell of a
+!! block from the block's own exterior faces (Toth & Roe eqs. 8-12)
+!> @param cInd Local index of the (child) block
+!> @param i0,j0,k0 Low fine cell of the parent cell
+subroutine reset_interior_faces (cInd, i0, j0, k0)
+
+  use parameters
+  use globals, only : BF
+  implicit none
+
+  integer, intent(in) :: cInd, i0, j0, k0
+
+  real    :: fx(0:2,0:1,0:1), fy(0:1,0:2,0:1), fz(0:1,0:1,0:2)
+  integer :: a, b, c
+
+  do c=0,1
+    do b=0,1
+      do a=0,2,2
+        fx(a,b,c) = BF(cInd,1,i0-1+a,j0+b,k0+c)
+        fy(b,a,c) = BF(cInd,2,i0+b,j0-1+a,k0+c)
+        fz(b,c,a) = BF(cInd,3,i0+b,j0+c,k0-1+a)
+      end do
+    end do
+  end do
+
+  call tr_interior (fx, fy, fz)
+
+  do c=0,1
+    do b=0,1
+      BF(cInd,1,i0,  j0+b,k0+c) = fx(1,b,c)
+      BF(cInd,2,i0+b,j0,  k0+c) = fy(b,1,c)
+      BF(cInd,3,i0+b,j0+c,k0  ) = fz(b,c,1)
+    end do
+  end do
+
+end subroutine reset_interior_faces
+
+!===============================================================================
+
+!> @brief Face-field fix-up after refinement (Toth & Roe 2002, sect. 3.2)
+!> @details Blocks created by refineBlock get their exterior faces from the
+!! father (eq. 4). Where a new block touches a same-level block that already
+!! existed, the shared faces are replaced by that block's (evolved) faces;
+!! where two new blocks touch, both copies are averaged. Each group of four
+!! fine faces still averages to the father's face, so the interior faces of
+!! the new blocks are then recomputed (eqs. 8-12) and every fine cell gets
+!! the father's divergence. Must be called by ALL ranks, after refinement
+!! and syncBlockLists, before any load balance or coarsening.
+!! Where a new block touches finer blocks (created in the same pass from a
+!! block one level finer than its father), its face takes the average of
+!! their faces, i.e. the old fine block's faces.
+!> @param fathers bIDs of the blocks just refined (same list on all ranks)
+!> @param nf Number of entries in fathers
+subroutine fix_new_faces (fathers, nf)
+
+  use parameters
+  use globals
+  use hydro_core, only : calcPrimsBlock
+  implicit none
+
+  integer, intent(in) :: nf
+  integer, intent(in) :: fathers(nf)
+
+  integer :: axis, nb, aID, bID, aOwner, bOwner, aInd, bInd, ntype, neighs(4)
+  integer :: ic, jc, kc, nData, badcells
+  integer :: mpistatus(MPI_STATUS_SIZE)
+  logical :: aNew, bNew
+  real    :: fa(ncells_x,ncells_x), fb(ncells_x,ncells_x), dmax, gmax
+  integer :: dir, ib, h, lc, lf, sx, sy, sz, oa, ob, a, b
+  real    :: fr(ncells_x/2,ncells_x/2)  ! ncells_x = ncells_block
+
+
+  if (nf == 0) return              ! nf is the same on all ranks
+
+  nData = ncells_x**2
+  aInd  = -1
+  bInd  = -1
+  dmax  = 0.0
+
+  ! 1. Shared faces of same-level pairs with at least one new block
+  do axis=1,3              ! RIGHT/BACK/TOP face of a = LEFT/FRONT/BOTTOM of b
+    do nb=1,nbMaxGlobal
+      aID = globalBlocks(nb)
+      if (aID == -1) cycle
+      call neighbors (aID, 2*axis, ntype, neighs)
+      if (ntype /= NEIGH_SAME) cycle
+      bID  = neighs(1)
+      aNew = is_new(aID)
+      bNew = is_new(bID)
+      if (.not.(aNew.or.bNew)) cycle
+      call getOwner (aID, aOwner)
+      call getOwner (bID, bOwner)
+      if ((rank /= aOwner).and.(rank /= bOwner)) cycle
+
+      if (rank == aOwner) then
+        call find (aID, localBlocks, nbMaxProc, aInd)
+        call get_plane (aInd, axis, ncells_x, fa)          ! a's high face
+      end if
+      if (rank == bOwner) then
+        call find (bID, localBlocks, nbMaxProc, bInd)
+        call get_plane (bInd, axis, 0, fb)                 ! b's low face
+      end if
+      if ((rank == aOwner).and.(rank /= bOwner)) then
+        call MPI_SENDRECV (fa, nData, mpi_real_kind, bOwner, aID,             &
+                           fb, nData, mpi_real_kind, bOwner, bID,             &
+                           mpi_comm_world, mpistatus, ierr)
+      else if ((rank == bOwner).and.(rank /= aOwner)) then
+        call MPI_SENDRECV (fb, nData, mpi_real_kind, aOwner, bID,             &
+                           fa, nData, mpi_real_kind, aOwner, aID,             &
+                           mpi_comm_world, mpistatus, ierr)
+      end if
+
+      dmax = max( dmax, maxval(abs(fa - fb)) )
+      if (aNew.and.bNew) then
+        fa = 0.5*(fa + fb)
+      else if (aNew) then
+        fa = fb                    ! b existed: its faces win
+      end if                       ! (only b new: a's faces win, fa as is)
+      if ((rank == aOwner).and.aNew) call put_plane (aInd, axis, ncells_x, fa)
+      if ((rank == bOwner).and.bNew) call put_plane (bInd, axis, 0, fa)
+    end do
+  end do
+
+  ! 1b. Faces of new blocks next to finer blocks. Those were created in this
+  !     same pass by refining a block one level finer than this block's
+  !     father (forced by the 2:1 balance). Their faces average exactly to
+  !     the old fine block's faces, which this block must take (Toth & Roe:
+  !     copy the fine fluxes) instead of the ones prolonged from its father.
+  h = ncells_x/2
+  oa = 0
+  ob = 0
+  do dir=1,6
+    axis = (dir+1)/2
+    lc   = merge(0, ncells_x, mod(dir,2) == 1)  ! this block's face
+    lf   = ncells_x - lc                        ! the finer blocks' face
+    do nb=1,nbMaxGlobal
+      aID = globalBlocks(nb)
+      if (aID == -1) cycle
+      if (.not.is_new(aID)) cycle
+      call neighbors (aID, dir, ntype, neighs)
+      if (ntype /= NEIGH_FINER) cycle
+      call getOwner (aID, aOwner)
+
+      do ib=1,4
+        bID = neighs(ib)
+        call getOwner (bID, bOwner)
+
+        ! Fine side: average of each 2x2 group of faces
+        if (rank == bOwner) then
+          call find (bID, localBlocks, nbMaxProc, bInd)
+          call get_plane (bInd, axis, lf, fb)
+          do b=1,h
+            do a=1,h
+              fr(a,b) = 0.25*( fb(2*a-1,2*b-1) + fb(2*a,2*b-1)                &
+                             + fb(2*a-1,2*b  ) + fb(2*a,2*b  ) )
+            end do
+          end do
+          if (rank /= aOwner) call MPI_SEND (fr, h*h, mpi_real_kind, aOwner,  &
+                                             bID, mpi_comm_world, ierr)
+        end if
+
+        ! New (coarse) side: replace the quadrant of its face
+        if (rank == aOwner) then
+          if (rank /= bOwner) call MPI_RECV (fr, h*h, mpi_real_kind, bOwner,  &
+                                       bID, mpi_comm_world, mpistatus, ierr)
+          call find (aID, localBlocks, nbMaxProc, aInd)
+          call siblingCoords (bID, sx, sy, sz)
+          select case (axis)
+          case (1)
+            oa = sy*h ; ob = sz*h
+          case (2)
+            oa = sx*h ; ob = sz*h
+          case (3)
+            oa = sx*h ; ob = sy*h
+          end select
+          call get_plane (aInd, axis, lc, fa)
+          dmax = max( dmax, maxval(abs(fa(oa+1:oa+h, ob+1:ob+h) - fr)) )
+          fa(oa+1:oa+h, ob+1:ob+h) = fr
+          call put_plane (aInd, axis, lc, fa)
+        end if
+      end do
+
+    end do
+  end do
+
+
+  ! 2. Interior faces, cell-centred B and primitives of the local new blocks
+  do nb=1,nbMaxProc
+    bID = localBlocks(nb)
+    if (bID == -1) cycle
+    if (.not.is_new(bID)) cycle
+    do kc=1,ncells_z/2
+      do jc=1,ncells_y/2
+        do ic=1,ncells_x/2
+          call reset_interior_faces (nb, 2*ic-1, 2*jc-1, 2*kc-1)
+        end do
+      end do
+    end do
+    call faces_to_cells (nb)
+    call calcPrimsBlock (U, PRIM, nb, CELLS_PHYS, badcells)
+  end do
+
+#ifdef MPIP
+  call mpi_reduce (dmax, gmax, 1, mpi_real_kind, mpi_max, master,             &
+                   mpi_comm_world, ierr)
+#else
+  gmax = dmax
+#endif
+  if (rank == master) write(logu,'(1x,a,i8,es12.4)')                           &
+       "fix_new_faces: it, max change of shared faces", it, gmax
+
+contains
+
+  !> True if block id was created by the refinement that is being fixed
+  logical function is_new (id)
+    integer, intent(in) :: id
+    integer :: lev, fid
+    is_new = .false.
+    call meshlevel (id, lev)
+    if (lev == 1) return
+    call father (id, fid)
+    is_new = any( fathers == fid )
+  end function is_new
+
+end subroutine fix_new_faces
+
+!===============================================================================
+
+!> @brief Normal-B face plane l (0..ncells) of a block, along axis
+subroutine get_plane (ind, axis, l, f)
+
+  use parameters
+  use globals, only : BF
+  implicit none
+
+  integer, intent(in)  :: ind, axis, l
+  real,    intent(out) :: f(ncells_x,ncells_x)
+
+  select case (axis)
+  case (1)
+    f = BF(ind,1,l,1:ncells_y,1:ncells_z)
+  case (2)
+    f = BF(ind,2,1:ncells_x,l,1:ncells_z)
+  case (3)
+    f = BF(ind,3,1:ncells_x,1:ncells_y,l)
+  end select
+
+end subroutine get_plane
+
+!===============================================================================
+
+!> @brief Writes the normal-B face plane l of a block, along axis
+subroutine put_plane (ind, axis, l, f)
+
+  use parameters
+  use globals, only : BF
+  implicit none
+
+  integer, intent(in) :: ind, axis, l
+  real,    intent(in) :: f(ncells_x,ncells_x)
+
+  select case (axis)
+  case (1)
+    BF(ind,1,l,1:ncells_y,1:ncells_z) = f
+  case (2)
+    BF(ind,2,1:ncells_x,l,1:ncells_z) = f
+  case (3)
+    BF(ind,3,1:ncells_x,1:ncells_y,l) = f
+  end select
+
+end subroutine put_plane
+
+!===============================================================================
+
+!> @brief Cell-centred B (U(6:8)) of one block = average of its two faces
+subroutine faces_to_cells (ind)
+
+  use parameters
+  use globals, only : U, BF
+  implicit none
+
+  integer, intent(in) :: ind
+  integer :: i, j, k
+
+  do k=1,ncells_z
+    do j=1,ncells_y
+      do i=1,ncells_x
+        U(ind,6,i,j,k) = 0.5*( BF(ind,1,i-1,j,k) + BF(ind,1,i,j,k) )
+        U(ind,7,i,j,k) = 0.5*( BF(ind,2,i,j-1,k) + BF(ind,2,i,j,k) )
+        U(ind,8,i,j,k) = 0.5*( BF(ind,3,i,j,k-1) + BF(ind,3,i,j,k) )
+      end do
+    end do
+  end do
+
+end subroutine faces_to_cells
+
+!===============================================================================
+
+!> @brief Restriction of a child's face field (Toth & Roe eq. 3, as area
+!! averages) to the father's resolution, over the child's octant
+!> @param cInd Local index of the child block
+!> @param r1,r2,r3 Restricted Bx (faces 0:h), By, Bz in octant indices
+subroutine restrict_child_faces (cInd, r1, r2, r3)
+
+  use parameters
+  use globals, only : BF
+  implicit none
+
+  integer, intent(in) :: cInd
+  real, intent(out) :: r1(0:ncells_x/2,ncells_x/2,ncells_x/2)
+  real, intent(out) :: r2(ncells_x/2,0:ncells_x/2,ncells_x/2)
+  real, intent(out) :: r3(ncells_x/2,ncells_x/2,0:ncells_x/2)
+  integer :: a, b, c, h
+
+  h = ncells_x/2
+  do c=1,h
+    do b=1,h
+      do a=0,h
+        r1(a,b,c) = 0.25*( BF(cInd,1,2*a,2*b-1,2*c-1) + BF(cInd,1,2*a,2*b,2*c-1)  &
+                         + BF(cInd,1,2*a,2*b-1,2*c  ) + BF(cInd,1,2*a,2*b,2*c  ) )
+      end do
+    end do
+  end do
+  do c=1,h
+    do b=0,h
+      do a=1,h
+        r2(a,b,c) = 0.25*( BF(cInd,2,2*a-1,2*b,2*c-1) + BF(cInd,2,2*a,2*b,2*c-1)  &
+                         + BF(cInd,2,2*a-1,2*b,2*c  ) + BF(cInd,2,2*a,2*b,2*c  ) )
+      end do
+    end do
+  end do
+  do c=0,h
+    do b=1,h
+      do a=1,h
+        r3(a,b,c) = 0.25*( BF(cInd,3,2*a-1,2*b-1,2*c) + BF(cInd,3,2*a,2*b-1,2*c)  &
+                         + BF(cInd,3,2*a-1,2*b,  2*c) + BF(cInd,3,2*a,2*b,  2*c) )
+      end do
+    end do
+  end do
+
+end subroutine restrict_child_faces
+
+!===============================================================================
+
+!> @brief Writes a restricted octant (restrict_child_faces) into the father
+subroutine put_child_faces (fInd, sx, sy, sz, r1, r2, r3)
+
+  use parameters
+  use globals, only : BF
+  implicit none
+
+  integer, intent(in) :: fInd, sx, sy, sz
+  real, intent(in) :: r1(0:ncells_x/2,ncells_x/2,ncells_x/2)
+  real, intent(in) :: r2(ncells_x/2,0:ncells_x/2,ncells_x/2)
+  real, intent(in) :: r3(ncells_x/2,ncells_x/2,0:ncells_x/2)
+  integer :: h, ox, oy, oz
+
+  h  = ncells_x/2
+  ox = sx*h
+  oy = sy*h
+  oz = sz*h
+  BF(fInd,1,ox:ox+h,  oy+1:oy+h, oz+1:oz+h) = r1
+  BF(fInd,2,ox+1:ox+h, oy:oy+h,  oz+1:oz+h) = r2
+  BF(fInd,3,ox+1:ox+h, oy+1:oy+h, oz:oz+h ) = r3
+
+end subroutine put_child_faces
 
 !===============================================================================
 

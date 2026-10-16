@@ -127,6 +127,8 @@ module parameters
   ! twice coarseThres. Good values are 0.3 and 0.03.
   real, parameter :: refineThres = 0.3           !< Refinement threshold
   real, parameter :: coarseThres = 0.03          !< Coarsening threshold
+  !> Also refine on (absolute) jumps of the first passive scalar
+  logical, parameter :: refine_passive = .false.
 
   ! ============================================
   ! Boundary conditions
@@ -193,9 +195,6 @@ module parameters
   logical, parameter :: logged = .true.
   !> Directory for logfiles (may be data directory)
   character(*), parameter :: logdir = "./M3/logs"!datadir
-
-  !> Run conservation diagnostics
-  logical, parameter :: enable_cons_diagnostics = .false.
   !> Directory to write conservation diagnostics
   character(*), parameter :: diagdir = datadir
 
@@ -217,8 +216,8 @@ module parameters
   !>  If MHD enabled the divergence cleaning schemes are the following:
   !      1) Include terms proportional to DIV B (powell et al. 1999)
   logical, parameter :: eight_wave = .false.
-  !>     2) Enable field-CD cleaning of div B (a bit slower, but recommended)
-  logical, parameter :: enable_flux_cd = .false.
+  !>     2) Enable field-CT cleaning of div B (more expensive, but recommended)
+  logical, parameter :: enable_flux_ct = .false.
 
   !> Numerical Integrator
   !! Currently recognized options:
@@ -244,6 +243,9 @@ module parameters
   !!    SOLVER_HLLE: HLLE Riemann solver (second order)
   !!    SOLVER_HLLD: HLLD Riemann solver (second order)
   integer, parameter :: limiter_type = LIMITER_MINMOD
+
+  !> Enable flux correction at fine-coarse interfaces
+  logical, parameter :: enable_flux_correction = .true.
 
   !> Number of ghost cells (equal to order of solver)
   integer, parameter :: nghost = 2
@@ -393,12 +395,22 @@ module parameters
   integer, parameter :: block_ram_size = &
     (ncells_block+2*nghost)**3 * neqtot * bytes_per_real
 
+  !> Memory of all per-block-slot arrays, in units of block_ram_size:
+  !!  U, UP, PRIM                            : 3
+  !!  BF, BFP (flux-CT)                      : 2 x 3/neqtot
+  !!  EMF     (flux-CT, edge EMFs)           : 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
+  !!  EW      (flux-CT, weights of edge EMFs): 3 (n+1)^3 / ((n+2 nghost)^3 neqtot)
+  !!  faceflux (fine-coarse flux correction) : 6 n^2 / (n+2 nghost)^3
+  real, parameter :: block_arrays = 3.0                                        &
+       + merge(6.0/neqtot                                                      &
+               + 6.0*(ncells_block+1)**3                                       &
+                 /real((ncells_block+2*nghost)**3*neqtot), 0.0, enable_flux_ct) &
+       + merge(6.0*ncells_block**2/real((ncells_block+2*nghost)**3), 0.0,      &
+               enable_flux_correction)
+
   !> Maximum number of blocks per process
-  ! Computed automatically from the amount of RAM per process and the
-  ! memory size of each block. The fudge factor in the formula below
-  ! leaves a bit of headroom for the code.
-  integer, parameter :: nbMaxProc = &
-    int((RAM_per_proc*1024*1024 - 6*block_ram_size)*0.95/(block_ram_size*3))
+  integer, parameter :: nbMaxProc = int((RAM_per_proc*1024*1024 &
+                        - 6*block_ram_size)*0.95/(block_ram_size*block_arrays))
 
   !> Maximum number of blocks across all process
   integer, parameter :: nbMaxGlobal = nbMaxProc*nProcs
